@@ -54,6 +54,7 @@ struct ProjectView: View {
         .padding(.horizontal)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
+        .clipShape(.rect(cornerRadius: 6.0))
         .onTapGesture {
             selectedProject = project
             isEditing = false

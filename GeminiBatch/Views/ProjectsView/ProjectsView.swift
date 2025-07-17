@@ -41,6 +41,11 @@ struct ProjectsView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
+        .onAppear {
+            if !projects.isEmpty {
+                selectedProject = projects.first
+            }
+        }
     }
     
     @ViewBuilder
@@ -76,6 +81,7 @@ extension ProjectsView {
         
         do {
             try modelContext.save()
+            selectedProject = newProject 
         } catch {
             currentError = ProjectError(type: .createProject, underlyingError: error)
         }
