@@ -53,21 +53,23 @@ struct ProjectView: View {
         .padding(.vertical, 4)
         .padding(.horizontal)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(isSelected ? Color.accentColor : Color.clear)
-        .clipShape(.rect(cornerRadius: 6.0))
+        .background(
+            isSelected ? Color.accentColor : Color.clear,
+            in: .rect(cornerRadius: 8, style: .continuous)
+        )
         .onTapGesture {
             selectedProject = project
             isEditing = false
             isTextFieldFocused = false
         }
         .contextMenu {
-            Button("Edit Name") {
+            Button("Edit Name", systemImage: "pencil") {
                 startEditing()
             }
             
             Divider()
             
-            Button("Delete", role: .destructive) {
+            Button("Delete", systemImage: "trash", role: .destructive) {
                 showingDeleteAlert = true
             }
         }
