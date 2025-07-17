@@ -33,7 +33,6 @@ struct ProjectsView: View {
                 }
                 .padding()
             }
-            .focusable(false)
         }
         .alert(item: $currentError) { error in
             Alert(

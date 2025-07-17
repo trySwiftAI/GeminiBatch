@@ -20,6 +20,7 @@ struct ProjectView: View {
     @State var isEditing: Bool = false
     
     @FocusState private var isTextFieldFocused: Bool
+    @FocusState private var isProjectFocused: Bool
     
     private var isSelected: Bool {
         selectedProject == project
@@ -61,6 +62,7 @@ struct ProjectView: View {
             selectedProject = project
             isEditing = false
             isTextFieldFocused = false
+            isProjectFocused = true
         }
         .contextMenu {
             Button("Edit Name", systemImage: "pencil") {
@@ -82,6 +84,13 @@ struct ProjectView: View {
             }
         } message: {
             Text("Are you sure you want to delete \"\(project.name)\"? This action cannot be undone.")
+        }
+        .focusable()
+        .focused($isProjectFocused)
+        .onDeleteCommand {
+            if selectedProject == project && !isEditing {
+                showingDeleteAlert = true
+            }
         }
     }
 }
