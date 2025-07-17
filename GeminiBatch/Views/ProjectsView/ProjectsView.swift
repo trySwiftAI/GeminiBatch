@@ -76,12 +76,12 @@ struct ProjectsView: View {
         .padding(.horizontal)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
-        .contentShape(Rectangle())
         .onTapGesture {
             editingProject = nil
             selectedProject = project
         }
         .onLongPressGesture(minimumDuration: 0.5) {
+            selectedProject = project
             editingProject = project
         }
         .contextMenu {
@@ -148,12 +148,10 @@ extension ProjectsView {
     }
     
     private func deleteProject(_ project: Project) {
-        // If we're deleting the selected project, clear the selection
         if selectedProject == project {
             selectedProject = nil
         }
-        
-        // If we're deleting the project being edited, clear the editing state
+
         if editingProject == project {
             editingProject = nil
         }
