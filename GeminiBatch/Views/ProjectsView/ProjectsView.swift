@@ -63,7 +63,7 @@ struct ProjectsView: View {
             }) {
                 Label("Add Project", systemImage: "plus")
                     .labelStyle(.iconOnly)
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.system(size: 20, weight: .semibold))
                     .padding(3)
             }
             .buttonStyle(.borderless)
