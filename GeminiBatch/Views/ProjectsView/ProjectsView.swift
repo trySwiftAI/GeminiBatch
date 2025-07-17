@@ -22,7 +22,7 @@ struct ProjectsView: View {
         VStack(spacing: 0) {
             projectsHeader
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
                     ForEach(projects, id: \.self) { project in
                         ProjectView(
                             project: project,
