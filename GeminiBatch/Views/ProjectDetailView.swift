@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct ProjectView: View {
+struct ProjectDetailView: View {
     let project: Project?
     
     var body: some View {
@@ -63,9 +63,4 @@ struct ProjectView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(NSColor.controlBackgroundColor))
     }
-}
-
-#Preview {
-    ProjectView(project: Project(name: "Sample Project"))
-        .frame(width: 600, height: 400)
 }
