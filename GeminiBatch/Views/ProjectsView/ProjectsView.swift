@@ -10,14 +10,17 @@ import SwiftData
 
 struct ProjectsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Project.createdAt, order: .reverse) private var projects: [Project]
+    
+    @Query(sort: \Project.createdAt, order: .reverse)
+    private var projects: [Project]
     
     @Binding var selectedProject: Project?
     
-    @State private var newProjectName = ""
     @State private var editingProject: Project?
     @State private var projectToDelete: Project?
     @State private var showingDeleteAlert = false
+    
+    @State private var currentError: ProjectError?
     
     var body: some View {
         List {
@@ -45,6 +48,13 @@ struct ProjectsView: View {
             if let project = projectToDelete {
                 Text("Are you sure you want to delete \"\(project.name)\"? This action cannot be undone.")
             }
+        }
+        .alert(item: $currentError) { error in
+            Alert(
+                title: Text(error.type.title),
+                message: Text(error.errorDescription),
+                dismissButton: .default(Text("OK"))
+            )
         }
     }
     
@@ -123,7 +133,14 @@ struct ProjectsView: View {
 // MARK: Project Actions
 extension ProjectsView {
     private func addProjectInEditMode() {
-        let newProject = Project(name: "My Project")
+        let projectName = "My Project"
+        
+        if projectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            currentError = ProjectError(type: .validation("Project name cannot be empty."))
+            return
+        }
+        
+        let newProject = Project(name: projectName)
         modelContext.insert(newProject)
         
         do {
@@ -131,20 +148,29 @@ extension ProjectsView {
             editingProject = newProject
             selectedProject = newProject
         } catch {
-            print("Failed to save project: \(error)")
+            currentError = ProjectError(type: .createProject, underlyingError: error)
         }
     }
     
     private func finishEditing() {
-        if let project = editingProject {
-            project.updatedAt = Date()
-            do {
-                try modelContext.save()
-            } catch {
-                print("Failed to save project changes: \(error)")
-            }
+        guard let project = editingProject else { return }
+        
+        // Validate project name
+        let trimmedName = project.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedName.isEmpty {
+            currentError = ProjectError(type: .validation("Project name cannot be empty."))
+            return
         }
-        editingProject = nil
+        
+        project.name = trimmedName
+        project.updatedAt = Date()
+        
+        do {
+            try modelContext.save()
+            editingProject = nil
+        } catch {
+            currentError = ProjectError(type: .updateProject, underlyingError: error)
+        }
     }
     
     private func deleteProject(_ project: Project) {
@@ -161,18 +187,25 @@ extension ProjectsView {
         do {
             try modelContext.save()
         } catch {
-            print("Failed to delete project: \(error)")
+            currentError = ProjectError(type: .deleteProject, underlyingError: error)
         }
     }
     
     private func addProject(name: String) {
-        let newProject = Project(name: name)
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if trimmedName.isEmpty {
+            currentError = ProjectError(type: .validation("Project name cannot be empty."))
+            return
+        }
+        
+        let newProject = Project(name: trimmedName)
         modelContext.insert(newProject)
         
         do {
             try modelContext.save()
         } catch {
-            print("Failed to save project: \(error)")
+            currentError = ProjectError(type: .createProject, underlyingError: error)
         }
     }
 }
