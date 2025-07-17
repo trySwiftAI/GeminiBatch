@@ -19,21 +19,22 @@ struct ProjectsView: View {
     @State private var currentError: ProjectError?
     
     var body: some View {
-        List {
-            Section {
-                ForEach(projects, id: \.self) { project in
-                    ProjectView(
-                        project: project,
-                        selectedProject: $selectedProject,
-                        currentError: $currentError
-                    )
+        VStack(spacing: 0) {
+            projectsHeader
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(projects, id: \.self) { project in
+                        ProjectView(
+                            project: project,
+                            selectedProject: $selectedProject,
+                            currentError: $currentError
+                        )
+                    }
                 }
-            } header: {
-                projectsHeader
+                .padding()
             }
+            .focusable(false)
         }
-        .listStyle(.sidebar)
-        .focusable()
         .alert(item: $currentError) { error in
             Alert(
                 title: Text(error.type.title),
@@ -62,11 +63,11 @@ struct ProjectsView: View {
             }) {
                 Label("Add Project", systemImage: "plus")
                     .labelStyle(.iconOnly)
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: 20, weight: .bold))
+                    .padding(3)
             }
             .buttonStyle(.borderless)
             .glassEffect(.regular.interactive())
-            .padding(.trailing, 10)
         }
         .padding()
     }

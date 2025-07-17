@@ -46,23 +46,19 @@ struct ProjectView: View {
                     .font(.headline)
             }
             
-            Text(project.createdAt, style: .date)
+            Text(project.createdAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
         .padding(.horizontal)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
+        .background(isSelected ? Color.accentColor : Color.clear)
         .clipShape(.rect(cornerRadius: 6.0))
         .onTapGesture {
             selectedProject = project
             isEditing = false
             isTextFieldFocused = false
-        }
-        .onLongPressGesture(minimumDuration: 0.5) {
-            selectedProject = project
-            startEditing()
         }
         .contextMenu {
             Button("Edit Name") {
