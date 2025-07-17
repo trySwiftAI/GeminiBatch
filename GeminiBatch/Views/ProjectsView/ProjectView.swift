@@ -14,19 +14,15 @@ struct ProjectView: View {
     let project: Project
     
     @Binding var selectedProject: Project?
-    @Binding var editingProject: Project?
     @Binding var currentError: ProjectError?
     
     @State var showingDeleteAlert = false
+    @State var isEditing: Bool = false
     
     @FocusState private var isTextFieldFocused: Bool
     
     private var isSelected: Bool {
         selectedProject == project
-    }
-    
-    private var isEditing: Bool {
-        editingProject == project
     }
     
     var body: some View {
@@ -59,8 +55,8 @@ struct ProjectView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
         .onTapGesture {
-            editingProject = nil
             selectedProject = project
+            isEditing = false
             isTextFieldFocused = false
         }
         .onLongPressGesture(minimumDuration: 0.5) {
@@ -89,28 +85,13 @@ struct ProjectView: View {
             Text("Are you sure you want to delete \"\(project.name)\"? This action cannot be undone.")
         }
     }
-    
-    private func startEditing() {
-        editingProject = project
-        isTextFieldFocused = true
-    }
-    
-    private func deleteProject() {
-        if selectedProject == project {
-            selectedProject = nil
-        }
+}
 
-        if editingProject == project {
-            editingProject = nil
-        }
-        
-        modelContext.delete(project)
-        
-        do {
-            try modelContext.save()
-        } catch {
-            currentError = ProjectError(type: .deleteProject, underlyingError: error)
-        }
+// MARK: Project Actions
+extension ProjectView {
+    private func startEditing() {
+        isEditing = true
+        isTextFieldFocused = true
     }
     
     private func finishEditing() {
@@ -125,10 +106,24 @@ struct ProjectView: View {
         
         do {
             try modelContext.save()
-            editingProject = nil
+            isEditing = false
             isTextFieldFocused = false
         } catch {
             currentError = ProjectError(type: .updateProject, underlyingError: error)
+        }
+    }
+    
+    private func deleteProject() {
+        if selectedProject == project {
+            selectedProject = nil
+        }
+        
+        modelContext.delete(project)
+        
+        do {
+            try modelContext.save()
+        } catch {
+            currentError = ProjectError(type: .deleteProject, underlyingError: error)
         }
     }
 }

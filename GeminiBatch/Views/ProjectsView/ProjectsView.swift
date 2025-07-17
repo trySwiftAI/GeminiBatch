@@ -16,9 +16,6 @@ struct ProjectsView: View {
     
     @Binding var selectedProject: Project?
     
-    @State private var editingProject: Project?
-    
-    
     @State private var currentError: ProjectError?
     
     var body: some View {
@@ -28,7 +25,6 @@ struct ProjectsView: View {
                     ProjectView(
                         project: project,
                         selectedProject: $selectedProject,
-                        editingProject: $editingProject,
                         currentError: $currentError
                     )
                 }
@@ -57,30 +53,25 @@ struct ProjectsView: View {
             Spacer()
             
             Button(action: {
-                addProject(name: "My Project")
+                addProject()
             }) {
-                Image(systemName: "plus")
-                    .font(.system(size: 16, weight: .medium))
+                Label("Add Project", systemImage: "plus")
+                    .labelStyle(.iconOnly)
+                    .font(.system(size: 20, weight: .medium))
             }
             .buttonStyle(.borderless)
+            .glassEffect(.regular.interactive())
+            .padding(.trailing, 10)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding()
     }
 }
 
 // MARK: Project Actions
 extension ProjectsView {
     
-    private func addProject(name: String) {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        if trimmedName.isEmpty {
-            currentError = ProjectError(type: .validation("Project name cannot be empty."))
-            return
-        }
-        
-        let newProject = Project(name: trimmedName)
+    private func addProject() {
+        let newProject = Project(name: "My Project")
         modelContext.insert(newProject)
         
         do {
