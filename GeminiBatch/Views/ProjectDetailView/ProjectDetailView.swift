@@ -8,59 +8,68 @@
 import SwiftUI
 
 struct ProjectDetailView: View {
-    let project: Project?
+    
+    let project: Project
     
     var body: some View {
-        Group {
-            if let project = project {
-                VStack(spacing: 20) {
-                    HStack {
-                        Text(project.name)
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                        
-                        Spacer()
-                        
-                        Text("Created: \(project.createdAt, style: .date)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+        VStack(spacing: 20) {
+            projectHeader(project)
+            Divider()
+            
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if !project.jsonlFiles.isEmpty {
+                        fileListView(project.jsonlFiles)
                     }
-                    .padding()
-                    
-                    Divider()
-                    
-                    // Main project content area
-                    VStack {
-                        Image(systemName: "doc.text")
-                            .font(.system(size: 60))
-                            .foregroundColor(.secondary)
-                        
-                        Text("Project content will go here")
-                            .font(.title2)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
+                    FileUploadView(project: project)
+                        .padding()
                 }
-            } else {
-                // Empty state when no project is selected
-                VStack(spacing: 20) {
-                    Image(systemName: "folder")
-                        .font(.system(size: 60))
-                        .foregroundColor(.secondary)
-                    
-                    Text("Select a project")
-                        .font(.title2)
-                        .foregroundColor(.secondary)
-                    
-                    Text("Choose a project from the sidebar to get started")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
+                .frame(maxWidth: .infinity)
+                .padding(.leading, 10)
             }
+            .padding(.horizontal)
+            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(NSColor.controlBackgroundColor))
+    }
+}
+
+extension ProjectDetailView {
+    
+    @ViewBuilder
+    private func projectHeader(_ project: Project) -> some View {
+        HStack {
+            Text(project.name)
+                .font(.largeTitle)
+                .fontWeight(.bold)
+            
+            Spacer()
+            
+            Text("Created: \(project.createdAt, style: .date)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding()
+    }
+    
+    @ViewBuilder
+    private func fileListView(_ files: [BatchFile]) -> some View {
+        VStack(alignment: .leading) {
+            
+            Text("JSONL Files (\(files.count))")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .padding(.horizontal)
+            
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    ForEach(files) { file in
+                        FileRowView(file: file)
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+            
+            Divider()
+        }
     }
 }

@@ -16,7 +16,11 @@ struct ContentView: View {
             ProjectsView(selectedProject: $selectedProject)
                 .frame(minWidth: 200, idealWidth: 250, maxWidth: 300)
         } detail: {
-            ProjectDetailView(project: selectedProject)
+            if let project = selectedProject {
+                ProjectDetailView(project: project)
+            } else {
+                NoProjectSelectedView()
+            }
         }
         .navigationSplitViewStyle(.balanced)
     }
