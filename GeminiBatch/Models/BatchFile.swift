@@ -40,4 +40,11 @@ final class BatchFile {
     var storedURL: URL {
         URL(fileURLWithPath: storedPath)
     }
+    
+    var formattedFileSize: String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useAll]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: fileSize)
+    }
 }

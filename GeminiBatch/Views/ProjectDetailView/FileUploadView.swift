@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 import SwiftData
 
 struct FileUploadView: View {
+    
     let project: Project
     @Environment(\.modelContext) private var modelContext
     @State private var isDragOver = false
@@ -11,9 +12,7 @@ struct FileUploadView: View {
     @State private var showingFilePicker = false
     @State private var errorMessage: String?
     @State private var successMessage: String?
-    
-    private let fileManager = ProjectFileManager.shared
-    
+        
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             
@@ -175,12 +174,17 @@ struct FileUploadView: View {
         
         Task {
             do {
-                let jsonlFiles = try await fileManager.storeJSONLFiles(for: project, from: urls, modelContext: modelContext)
+                let processedBatchFiles = try await ProjectFileManager.processBatchFiles(fromURLs: urls, forProject: project)
                 
-                await MainActor.run {
-                    let fileCount = jsonlFiles.count
-                    if fileCount > 0 {
-                        successMessage = "Successfully uploaded \(fileCount) file\(fileCount == 1 ? "" : "s")"
+                try await MainActor.run {
+                    for processedBatchFile in processedBatchFiles {
+                        modelContext.insert(processedBatchFile)
+                    }
+                    try modelContext.save()
+                    
+                    let uploadedBatchFilesCount = processedBatchFiles.count
+                    if uploadedBatchFilesCount > 0 {
+                        successMessage = "Successfully uploaded \(uploadedBatchFilesCount) file\(uploadedBatchFilesCount == 1 ? "" : "s")"
                     }
                     
                     uploadProgress = 1.0

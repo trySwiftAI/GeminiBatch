@@ -8,7 +8,7 @@
 import SwiftUI
 import SwiftData
 
-struct ProjectView: View {
+struct ProjectOverviewView: View {
     @Environment(\.modelContext) private var modelContext
     
     let project: Project
@@ -27,37 +27,14 @@ struct ProjectView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if isEditing {
-                TextField("Project Name", text: Binding(
-                    get: { project.name },
-                    set: { project.name = $0 }
-                ))
-                .font(.headline)
-                .textFieldStyle(.plain)
-                .focused($isTextFieldFocused)
-                .onSubmit {
-                    finishEditing()
-                }
-                .onAppear {
-                    isTextFieldFocused = true
-                }
-            } else {
-                Text(project.name)
-                    .font(.headline)
+        ZStack {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .glassEffect(.regular.interactive().tint(.accentColor), in: .rect(cornerRadius: 8))
             }
-            
-            Text(project.createdAt.formatted(date: .abbreviated, time: .shortened))
-                .font(.caption)
-                .foregroundColor(.secondary)
+            projectOverviewView
         }
-        .padding(.vertical, 4)
-        .padding(.horizontal)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            isSelected ? Color.accentColor : Color.clear,
-            in: .rect(cornerRadius: 8, style: .continuous)
-        )
+        .contentShape(Rectangle())
         .onTapGesture {
             selectedProject = project
             isEditing = false
@@ -85,8 +62,7 @@ struct ProjectView: View {
         } message: {
             Text("Are you sure you want to delete \"\(project.name)\"? This action cannot be undone.")
         }
-        .focusable()
-        .focused($isProjectFocused)
+        .focusEffectDisabled()
         .onDeleteCommand {
             if selectedProject == project && !isEditing {
                 showingDeleteAlert = true
@@ -95,8 +71,42 @@ struct ProjectView: View {
     }
 }
 
+extension ProjectOverviewView {
+    @ViewBuilder
+    private var projectOverviewView: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if isEditing {
+                TextField("Project Name", text: Binding(
+                    get: { project.name },
+                    set: { project.name = $0 }
+                ))
+                .font(.headline)
+                .textFieldStyle(.plain)
+                .focused($isTextFieldFocused)
+                .onSubmit {
+                    finishEditing()
+                }
+                .onAppear {
+                    isTextFieldFocused = true
+                }
+            } else {
+                Text(project.name)
+                    .font(.headline)
+            }
+            
+            Text(project.createdAt.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 // MARK: Project Actions
-extension ProjectView {
+extension ProjectOverviewView {
+    
     private func startEditing() {
         isEditing = true
         isTextFieldFocused = true

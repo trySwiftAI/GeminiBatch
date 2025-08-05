@@ -15,7 +15,7 @@ final class Project {
     var updatedAt: Date
     
     @Relationship(deleteRule: .cascade, inverse: \BatchFile.project)
-    var jsonlFiles: [BatchFile] = []
+    var batchFiles: [BatchFile] = []
     
     init(name: String) {
         self.name = name

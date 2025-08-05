@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct ProjectError: LocalizedError, Identifiable {
+struct ProjectError: Error, Identifiable {
     let id = UUID()
     let type: ErrorType
     let underlyingError: Error?

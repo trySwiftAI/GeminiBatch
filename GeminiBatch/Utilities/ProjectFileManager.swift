@@ -6,78 +6,64 @@
 //
 
 import Foundation
-import UniformTypeIdentifiers
 import SwiftData
+import UniformTypeIdentifiers
 
-class ProjectFileManager {
-    static let shared = ProjectFileManager()
+struct ProjectFileManager {
     
-    private let documentsDirectory: URL
-    private let projectsDirectory: URL
+    static private let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+    static private let projectsDirectory = documentsDirectory.appendingPathComponent("GeminiBatch", isDirectory: true)
     
-    private init() {
-        self.documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        self.projectsDirectory = documentsDirectory.appendingPathComponent("GeminiBatch", isDirectory: true)
-        
-        createProjectsDirectoryIfNeeded()
-    }
-    
-    private func createProjectsDirectoryIfNeeded() {
-        if !FileManager.default.fileExists(atPath: projectsDirectory.path) {
-            try? FileManager.default.createDirectory(at: projectsDirectory, withIntermediateDirectories: true)
-        }
-    }
-    
-    func createProjectDirectory(for project: Project) -> URL {
-        let projectDir = projectsDirectory.appendingPathComponent(project.persistentModelID.hashValue.description, isDirectory: true)
-        try? FileManager.default.createDirectory(at: projectDir, withIntermediateDirectories: true)
-        return projectDir
-    }
-    
-    func storeJSONLFiles(
-        for project: Project,
-        from urls: [URL],
-        modelContext: ModelContext
+    static func processBatchFiles(
+        fromURLs urls: [URL],
+        forProject project: Project
     ) async throws -> [BatchFile] {
-        let projectDir = createProjectDirectory(for: project)
-        var jsonlFiles: [BatchFile] = []
         
-        for url in urls {
-            // Check if it's a JSONL file
-            guard url.pathExtension.lowercased() == "jsonl" else {
-                continue
+        return try await withCheckedThrowingContinuation { continuation in
+            Task.detached(priority: .background) {
+                do {
+                    let projectDirectory = projectDirectory(for: project)
+                    
+                    var processedBatchFiles: [BatchFile] = []
+                    for url in urls {
+                        guard url.pathExtension.lowercased() == "jsonl" else {
+                            continue
+                        }
+                        
+                        let fileName = url.lastPathComponent
+                        let destinationURL = projectDirectory.appendingPathComponent(fileName)
+                        
+                        let fileSize = try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64 ?? 0
+                        
+                        if FileManager.default.fileExists(atPath: destinationURL.path) {
+                            try FileManager.default.removeItem(at: destinationURL)
+                        }
+                        
+                        try FileManager.default.copyItem(at: url, to: destinationURL)
+                        
+                        let batchFile = BatchFile(
+                            name: fileName,
+                            originalURL: url,
+                            storedURL: destinationURL,
+                            fileSize: fileSize,
+                            project: project
+                        )
+                        processedBatchFiles.append(batchFile)
+                    }
+                    
+                    continuation.resume(returning: processedBatchFiles)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
             }
-            
-            let fileName = url.lastPathComponent
-            let destinationURL = projectDir.appendingPathComponent(fileName)
-            
-            // Get file size
-            let fileSize = try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64 ?? 0
-            
-            // Copy file to project directory
-            if FileManager.default.fileExists(atPath: destinationURL.path) {
-                try FileManager.default.removeItem(at: destinationURL)
-            }
-            
-            try FileManager.default.copyItem(at: url, to: destinationURL)
-            
-            let jsonlFile = BatchFile(
-                name: fileName,
-                originalURL: url,
-                storedURL: destinationURL,
-                fileSize: fileSize,
-                project: project
-            )
-            
-            modelContext.insert(jsonlFile)
-            jsonlFiles.append(jsonlFile)
         }
-        
-        try modelContext.save()
-        return jsonlFiles
     }
     
-    func deleteJSONLFile(_ file: BatchFile, modelContext: ModelContext) throws {
+    @MainActor
+    static func deleteBatchFile(
+        _ file: BatchFile,
+        modelContext: ModelContext
+    ) async throws {
         if FileManager.default.fileExists(atPath: file.storedURL.path) {
             try FileManager.default.removeItem(at: file.storedURL)
         }
@@ -85,21 +71,47 @@ class ProjectFileManager {
         try modelContext.save()
     }
     
-    func deleteProjectDirectory(for project: Project) throws {
-        let projectDir = projectsDirectory.appendingPathComponent(project.persistentModelID.hashValue.description, isDirectory: true)
-        if FileManager.default.fileExists(atPath: projectDir.path) {
-            try FileManager.default.removeItem(at: projectDir)
+    static func deleteProjectDirectory(for project: Project) async throws {
+        let projectDirectory = projectDirectory(for: project)
+        if FileManager.default.fileExists(atPath: projectDirectory.path) {
+            try FileManager.default.removeItem(at: projectDirectory)
+        }
+    }
+}
+
+extension ProjectFileManager {
+    
+    private static func projectDirectory(
+        for project: Project
+    ) -> URL {
+        let projectDirectoryName = projectDirectoryName(from: project.name)
+        let projectDirectory = projectsDirectory.appendingPathComponent(projectDirectoryName, isDirectory: true)
+        
+        if FileManager.default.fileExists(atPath: projectDirectory.path) {
+            return projectDirectory
+        }
+        
+        createProjectsDirectoryIfNeeded()
+        try? FileManager.default.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
+        return projectDirectory
+    }
+    
+    private static func createProjectsDirectoryIfNeeded() {
+        if !FileManager.default.fileExists(atPath: Self.projectsDirectory.path) {
+            try? FileManager.default.createDirectory(
+                at: Self.projectsDirectory,
+                withIntermediateDirectories: true
+            )
         }
     }
     
-    func getFileContent(for file: BatchFile) throws -> String {
-        return try String(contentsOf: file.storedURL, encoding: .utf8)
-    }
-    
-    func formatFileSize(_ bytes: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useAll]
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: bytes)
+    private static func projectDirectoryName(from name: String) -> String {
+        // Remove special characters, keep only alphanumeric and spaces
+        let cleaned = name.components(separatedBy: CharacterSet.alphanumerics.inverted).joined(separator: " ")
+        
+        // Split by spaces, filter out empty strings, and join with underscores
+        let words = cleaned.components(separatedBy: " ").filter { !$0.isEmpty }
+        
+        return words.joined(separator: "_").lowercased()
     }
 }

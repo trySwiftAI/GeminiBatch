@@ -11,7 +11,6 @@ struct FileRowView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
 
-    private let fileManager = ProjectFileManager.shared
     let file: BatchFile
     
     var body: some View {
@@ -26,7 +25,7 @@ struct FileRowView: View {
                         .lineLimit(1)
                     
                     HStack(spacing: 12) {
-                        Label(fileManager.formatFileSize(file.fileSize), systemImage: "info.circle")
+                        Label(file.formattedFileSize, systemImage: "info.circle")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         
@@ -49,7 +48,9 @@ struct FileRowView: View {
                     .help("View file")
                     
                     Button {
-                        deleteFile(file)
+                        Task {
+                            await deleteFile(file)
+                        }
                     } label: {
                         Image(systemName: "trash")
                             .foregroundColor(.red)
@@ -76,9 +77,9 @@ struct FileRowView: View {
         NSWorkspace.shared.open(file.storedURL)
     }
     
-    private func deleteFile(_ file: BatchFile) {
+    private func deleteFile(_ file: BatchFile) async {
         do {
-            try fileManager.deleteJSONLFile(file, modelContext: modelContext)
+            try await ProjectFileManager.deleteBatchFile(file, modelContext: modelContext)
         } catch {
             // TODO: Handle error - maybe show an alert
             print("Failed to delete file: \(error.localizedDescription)")

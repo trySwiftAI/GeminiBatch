@@ -24,7 +24,7 @@ struct ProjectsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(projects, id: \.self) { project in
-                        ProjectView(
+                        ProjectOverviewView(
                             project: project,
                             selectedProject: $selectedProject,
                             currentError: $currentError

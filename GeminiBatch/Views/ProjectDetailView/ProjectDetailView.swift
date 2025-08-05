@@ -18,8 +18,8 @@ struct ProjectDetailView: View {
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    if !project.jsonlFiles.isEmpty {
-                        fileListView(project.jsonlFiles)
+                    if !project.batchFiles.isEmpty {
+                        fileListView(project.batchFiles)
                     }
                     FileUploadView(project: project)
                         .padding()
