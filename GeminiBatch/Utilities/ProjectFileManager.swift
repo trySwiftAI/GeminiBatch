@@ -18,44 +18,36 @@ struct ProjectFileManager {
         fromURLs urls: [URL],
         forProject project: Project
     ) async throws -> [BatchFile] {
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            Task.detached(priority: .background) {
-                do {
-                    let projectDirectory = projectDirectory(for: project)
-                    
-                    var processedBatchFiles: [BatchFile] = []
-                    for url in urls {
-                        guard url.pathExtension.lowercased() == "jsonl" else {
-                            continue
-                        }
-                        
-                        let fileName = url.lastPathComponent
-                        let destinationURL = projectDirectory.appendingPathComponent(fileName)
-                        
-                        let fileSize = try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64 ?? 0
-                        
-                        if FileManager.default.fileExists(atPath: destinationURL.path) {
-                            try FileManager.default.removeItem(at: destinationURL)
-                        }
-                        
-                        try FileManager.default.copyItem(at: url, to: destinationURL)
-                        
-                        let batchFile = BatchFile(
-                            name: fileName,
-                            originalURL: url,
-                            storedURL: destinationURL,
-                            fileSize: fileSize,
-                            project: project
-                        )
-                        processedBatchFiles.append(batchFile)
-                    }
-                    
-                    continuation.resume(returning: processedBatchFiles)
-                } catch {
-                    continuation.resume(throwing: error)
+        do {
+            let projectDirectory = projectDirectory(for: project)
+            
+            var processedBatchFiles: [BatchFile] = []
+            for url in urls {
+                guard url.pathExtension.lowercased() == "jsonl" else {
+                    continue
                 }
+                
+                let fileName = url.lastPathComponent
+                let destinationURL = projectDirectory.appendingPathComponent(fileName)
+                
+                let fileSize = try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64 ?? 0
+                
+                if FileManager.default.fileExists(atPath: destinationURL.path) {
+                    try FileManager.default.removeItem(at: destinationURL)
+                }
+                
+                try FileManager.default.copyItem(at: url, to: destinationURL)
+                
+                let batchFile = BatchFile(
+                    name: fileName,
+                    originalURL: url,
+                    storedURL: destinationURL,
+                    fileSize: fileSize,
+                    project: project
+                )
+                processedBatchFiles.append(batchFile)
             }
+            return processedBatchFiles
         }
     }
     
