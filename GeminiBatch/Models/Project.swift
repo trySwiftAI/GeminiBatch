@@ -9,7 +9,8 @@ import Foundation
 import SwiftData
 
 @Model
-final class Project {
+final class Project: Sendable {
+    var id: UUID = UUID()
     var name: String
     var createdAt: Date
     var updatedAt: Date

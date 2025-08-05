@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class BatchFile {
+final class BatchFile: Sendable {
     
     var name: String
     var originalPath: String
