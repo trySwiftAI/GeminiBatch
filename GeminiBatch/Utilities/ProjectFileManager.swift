@@ -30,8 +30,6 @@ actor ProjectFileManager {
     func processBatchFiles(
         fromURLs urls: [URL]
     ) async throws -> [BatchFile] {
-        let projectID = await MainActor.run { project.id }
-        let projectDirectory = try await createProjectDirectoryIfNeeded()
         let batchFilesData: [BatchFileData] = try await processFileURLs(urls)
 
         return await MainActor.run {
@@ -47,8 +45,10 @@ actor ProjectFileManager {
         }
     }
     
+    @MainActor
     func deleteBatchFile(
-        _ file: BatchFile
+        _ file: BatchFile,
+        inModelContext modelContext: ModelContext
     ) async throws(ProjectFileError) {
         do {
             try await Task.detached {
@@ -73,12 +73,11 @@ actor ProjectFileManager {
         } catch let error as ProjectFileError {
             throw error
         } catch {
-            throw await ProjectFileError.fileRemovalFailed(path: file.storedURL.path)
+            throw ProjectFileError.fileRemovalFailed(path: file.storedURL.path)
         }
         
         do {
             try await MainActor.run {
-                guard let modelContext = file.modelContext else { return }
                 modelContext.delete(file)
                 try modelContext.save()
             }

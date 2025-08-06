@@ -79,7 +79,7 @@ struct FileRowView: View {
     
     private func deleteFile(_ file: BatchFile) async {
         do {
-            try await ProjectFileManager.deleteBatchFile(file, modelContext: modelContext)
+            try await ProjectFileManager(project: file.project).deleteBatchFile(file, inModelContext: modelContext)
         } catch {
             // TODO: Handle error - maybe show an alert
             print("Failed to delete file: \(error.localizedDescription)")

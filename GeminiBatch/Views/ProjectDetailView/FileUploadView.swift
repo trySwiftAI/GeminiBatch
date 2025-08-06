@@ -174,7 +174,7 @@ struct FileUploadView: View {
         
         Task {
             do {
-                let processedBatchFiles = try await ProjectFileManager.processBatchFiles(fromURLs: urls, forProject: project)
+                let processedBatchFiles = try await ProjectFileManager(project: project).processBatchFiles(fromURLs: urls)
                 
                 try await MainActor.run {
                     for processedBatchFile in processedBatchFiles {
