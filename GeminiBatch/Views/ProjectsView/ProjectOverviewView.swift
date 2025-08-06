@@ -79,7 +79,7 @@ struct ProjectOverviewView: View {
                 showErrorToast = true
                 // Auto-dismiss the error after showing the toast
                 Task {
-                    try? await Task.sleep(for: .seconds(4))
+                    try await Task.sleep(for: .seconds(4))
                     showErrorToast = false
                     currentError = nil
                 }

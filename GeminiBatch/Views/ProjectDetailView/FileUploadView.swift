@@ -12,8 +12,11 @@ struct FileUploadView: View {
     @State private var uploadProgress: Double = 0.0
     @State private var showingFilePicker = false
     
-    @State private var errorMessage: String?
-    @State private var successMessage: String?
+    @State private var showErrorToast = false
+    @State private var errorMessage = ""
+    
+    @State private var showSuccessToast = false
+    @State private var successMessage = ""
         
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -28,15 +31,6 @@ struct FileUploadView: View {
             if isUploading {
                 uploadProgressView
             }
-            
-            // Messages
-            if let errorMessage = errorMessage {
-                errorMessageView(errorMessage)
-            }
-            
-            if let successMessage = successMessage {
-                successMessageView(successMessage)
-            }
         }
         .fileImporter(
             isPresented: $showingFilePicker,
@@ -45,6 +39,14 @@ struct FileUploadView: View {
         ) { result in
             handleFileImport(result)
         }
+        .errorToast(
+            message: errorMessage,
+            isPresented: $showErrorToast
+        )
+        .successToast(
+            message: successMessage,
+            isPresented: $showSuccessToast
+        )
     }
     
     private var uploadArea: some View {
@@ -101,48 +103,6 @@ struct FileUploadView: View {
         .cornerRadius(8)
     }
     
-    private func errorMessageView(_ message: String) -> some View {
-        HStack {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.red)
-            
-            Text(message)
-                .font(.caption)
-                .foregroundColor(.red)
-            
-            Spacer()
-            
-            Button("Dismiss") {
-                errorMessage = nil
-            }
-            .font(.caption)
-        }
-        .padding()
-        .background(Color.red.opacity(0.1))
-        .cornerRadius(8)
-    }
-    
-    private func successMessageView(_ message: String) -> some View {
-        HStack {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(.green)
-            
-            Text(message)
-                .font(.caption)
-                .foregroundColor(.green)
-            
-            Spacer()
-            
-            Button("Dismiss") {
-                successMessage = nil
-            }
-            .font(.caption)
-        }
-        .padding()
-        .background(Color.green.opacity(0.1))
-        .cornerRadius(8)
-    }
-    
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
         let urls = providers.compactMap { provider in
             provider.loadObject(ofClass: URL.self) { url, error in
@@ -163,6 +123,7 @@ struct FileUploadView: View {
             processFiles(urls, for: project)
         case .failure(let error):
             errorMessage = "Failed to import files: \(error.localizedDescription)"
+            showErrorToast = true
         }
     }
     
@@ -171,8 +132,8 @@ struct FileUploadView: View {
         
         isUploading = true
         uploadProgress = 0.0
-        errorMessage = nil
-        successMessage = nil
+        showErrorToast = false
+        showSuccessToast = false
         
         Task {
             do {
@@ -187,18 +148,21 @@ struct FileUploadView: View {
                     let uploadedBatchFilesCount = processedBatchFiles.count
                     if uploadedBatchFilesCount > 0 {
                         successMessage = "Successfully uploaded \(uploadedBatchFilesCount) file\(uploadedBatchFilesCount == 1 ? "" : "s")"
+                        showSuccessToast = true
                     }
                     
                     uploadProgress = 1.0
                     
                     // Hide progress after a short delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    Task {
+                        try await Task.sleep(for: .seconds(1))
                         isUploading = false
                     }
                 }
             } catch {
                 await MainActor.run {
                     errorMessage = "Failed to upload files: \(error.localizedDescription)"
+                    showErrorToast = true
                     isUploading = false
                 }
             }
