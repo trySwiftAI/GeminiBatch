@@ -26,3 +26,7 @@ struct NoProjectSelectedView: View {
         }
     }
 }
+
+#Preview {
+    NoProjectSelectedView()
+}

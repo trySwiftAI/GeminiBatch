@@ -14,7 +14,9 @@ struct ProjectOverviewView: View {
     let project: Project
     
     @Binding var selectedProject: Project?
+    
     @Binding var currentError: ProjectError?
+    @State private var showErrorToast = false
     
     @State var showingDeleteAlert = false
     @State var isEditing: Bool = false
@@ -66,6 +68,23 @@ struct ProjectOverviewView: View {
         .onDeleteCommand {
             if selectedProject == project && !isEditing {
                 showingDeleteAlert = true
+            }
+        }
+        .errorToast(
+            message: currentError?.errorDescription ?? "",
+            isPresented: $showErrorToast
+        )
+        .onChange(of: currentError) { _, newError in
+            if newError != nil {
+                showErrorToast = true
+                // Auto-dismiss the error after showing the toast
+                Task {
+                    try? await Task.sleep(for: .seconds(4))
+                    showErrorToast = false
+                    currentError = nil
+                }
+            } else {
+                showErrorToast = false
             }
         }
     }

@@ -3,13 +3,15 @@ import UniformTypeIdentifiers
 import SwiftData
 
 struct FileUploadView: View {
+    @Environment(\.modelContext) private var modelContext
     
     let project: Project
-    @Environment(\.modelContext) private var modelContext
+    
     @State private var isDragOver = false
     @State private var isUploading = false
     @State private var uploadProgress: Double = 0.0
     @State private var showingFilePicker = false
+    
     @State private var errorMessage: String?
     @State private var successMessage: String?
         

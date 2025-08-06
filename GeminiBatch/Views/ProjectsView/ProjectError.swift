@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct ProjectError: Error, Identifiable {
+struct ProjectError: Error, Identifiable, Equatable {
     let id = UUID()
     let type: ErrorType
     let underlyingError: Error?
@@ -66,5 +66,10 @@ struct ProjectError: Error, Identifiable {
     
     var failureReason: String? {
         return String(describing: underlyingError)
+    }
+    
+    // MARK: - Equatable
+    static func == (lhs: ProjectError, rhs: ProjectError) -> Bool {
+        return lhs.id == rhs.id
     }
 }
