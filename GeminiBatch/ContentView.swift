@@ -17,7 +17,7 @@ struct ContentView: View {
                 .frame(minWidth: 200, idealWidth: 250, maxWidth: 300)
         } detail: {
             if let project = selectedProject {
-                ProjectDetailView(project: project)
+                ProjectDetailSplitView(project: project)
             } else {
                 NoProjectSelectedView()
             }
