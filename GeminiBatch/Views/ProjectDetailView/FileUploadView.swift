@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 import SwiftData
@@ -27,14 +28,13 @@ struct FileUploadView: View {
             
             uploadArea
             
-            // Progress indicator
             if isUploading {
                 uploadProgressView
             }
         }
         .fileImporter(
             isPresented: $showingFilePicker,
-            allowedContentTypes: [UTType.text],
+            allowedContentTypes: [UTType.jsonl],
             allowsMultipleSelection: true
         ) { result in
             handleFileImport(result)
@@ -68,10 +68,11 @@ struct FileUploadView: View {
             }
             .buttonStyle(.borderedProminent)
             
-            Text("Supported formats: .jsonl")
+            Text("Supported format: .jsonl")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
+        .padding()
         .frame(maxWidth: .infinity, minHeight: 200)
         .background(
             RoundedRectangle(cornerRadius: 12)
@@ -104,20 +105,41 @@ struct FileUploadView: View {
     }
     
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        let urls = providers.compactMap { provider in
-            provider.loadObject(ofClass: URL.self) { url, error in
-                if let url = url {
-                    DispatchQueue.main.async {
-                        processFiles([url], for: project)
+        guard !providers.isEmpty else { return false }
+    
+        Task {
+            var collectedURLs: [URL] = []
+            
+            for provider in providers {
+                do {
+                    if let url = try await withCheckedThrowingContinuation({ (continuation: CheckedContinuation<URL?, Error>) in
+                        _ = provider.loadObject(ofClass: URL.self) { url, error in
+                            if let error = error {
+                                continuation.resume(throwing: error)
+                            } else {
+                                continuation.resume(returning: url)
+                            }
+                        }
+                    }) {
+                        collectedURLs.append(url)
                     }
+                } catch {
+                    // Continue with other providers if one fails
+                    continue
+                }
+            }
+            
+            if !collectedURLs.isEmpty {
+                await MainActor.run {
+                    processFiles(collectedURLs, for: project)
                 }
             }
         }
         
-        return !urls.isEmpty
+        return true
     }
     
-    private func handleFileImport(_ result: Result<[URL], Error>) {        
+    private func handleFileImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
             processFiles(urls, for: project)
@@ -129,7 +151,6 @@ struct FileUploadView: View {
     
     private func processFiles(_ urls: [URL], for project: Project) {
         guard !urls.isEmpty else { return }
-        
         isUploading = true
         uploadProgress = 0.0
         showErrorToast = false
@@ -161,11 +182,21 @@ struct FileUploadView: View {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = "Failed to upload files: \(error.localizedDescription)"
+                    errorMessage = "Failed to upload files: \(String(describing: error))"
                     showErrorToast = true
                     isUploading = false
                 }
             }
         }
     }
+}
+
+#Preview {
+    let project = Project(name: "Sample Project")
+    
+    FileUploadView(project: project)
+    .modelContainer(
+        for: [Project.self],
+        inMemory: true
+    )
 }

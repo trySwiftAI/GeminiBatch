@@ -52,21 +52,21 @@ actor ProjectFileManager {
     ) async throws(ProjectFileError) {
         do {
             try await Task.detached {
-                if await FileManager.default.fileExists(atPath: file.storedURL.path) {
+                if FileManager.default.fileExists(atPath: file.storedURL.path) {
                     do {
-                        try await FileManager.default.removeItem(at: file.storedURL)
+                        try FileManager.default.removeItem(at: file.storedURL)
                     } catch let error as CocoaError {
                         switch error.code {
                         case .fileReadNoPermission, .fileWriteNoPermission:
-                            throw await ProjectFileError.permissionDenied(
+                            throw ProjectFileError.permissionDenied(
                                 operation: "file deletion",
                                 path: file.storedURL.path
                             )
                         default:
-                            throw await ProjectFileError.fileRemovalFailed(path: file.storedURL.path)
+                            throw ProjectFileError.fileRemovalFailed(path: file.storedURL.path)
                         }
                     } catch {
-                        throw await ProjectFileError.fileRemovalFailed(path: file.storedURL.path)
+                        throw ProjectFileError.fileRemovalFailed(path: file.storedURL.path)
                     }
                 }
             }.value
@@ -132,11 +132,14 @@ extension ProjectFileManager {
     
     private func processFileURLs(
         _ urls: [URL]
-    ) async throws -> [BatchFileData] {
+    ) async throws(ProjectFileError) -> [BatchFileData] {
         
         do {
             return try await Task.detached {
                 var processedBatchFilesData: [BatchFileData] = []
+                
+                // Create project directory first
+                try await self.createProjectDirectoryIfNeeded()
                 
                 for url in urls {
                     // Validate file type
@@ -211,27 +214,17 @@ extension ProjectFileManager {
         }
     }
     
-    private func createProjectDirectoryIfNeeded() async throws(ProjectFileError) -> URL {
+    private func createProjectDirectoryIfNeeded() throws(ProjectFileError) {
+        if FileManager.default.fileExists(atPath: self.projectDirectory.path) {
+            return
+        }
+        
+        try self.createProjectsDirectoryIfNeeded()
+        
         do {
-            return try await Task.detached {
-                if FileManager.default.fileExists(atPath: self.projectDirectory.path) {
-                    return self.projectDirectory
-                }
-                
-                try await self.createProjectsDirectoryIfNeeded()
-                
-                do {
-                    try FileManager.default.createDirectory(at: self.projectDirectory, withIntermediateDirectories: true)
-                } catch {
-                    throw ProjectFileError.directoryCreationFailed(path: self.projectDirectory.path)
-                }
-                
-                return self.projectDirectory
-            }.value
-        } catch let error as ProjectFileError {
-            throw error
+            try FileManager.default.createDirectory(at: self.projectDirectory, withIntermediateDirectories: true)
         } catch {
-            throw ProjectFileError.directoryCreationFailed(path: projectsDirectory.path)
+            throw ProjectFileError.directoryCreationFailed(path: self.projectDirectory.path)
         }
     }
     
