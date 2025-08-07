@@ -10,14 +10,13 @@ import SwiftData
 
 struct ProjectsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(ToastPresenter.self) private var toastPresenter
     
     @Query(sort: \Project.createdAt, order: .reverse)
     private var projects: [Project]
     
     @Binding var selectedProject: Project?
-    
-    @State private var currentError: ProjectError?
-    
+        
     var body: some View {
         VStack(spacing: 0) {
             projectsHeader
@@ -26,20 +25,12 @@ struct ProjectsView: View {
                     ForEach(projects, id: \.self) { project in
                         ProjectOverviewView(
                             project: project,
-                            selectedProject: $selectedProject,
-                            currentError: $currentError
+                            selectedProject: $selectedProject
                         )
                     }
                 }
                 .padding()
             }
-        }
-        .alert(item: $currentError) { error in
-            Alert(
-                title: Text(error.type.title),
-                message: Text(error.errorDescription),
-                dismissButton: .default(Text("OK"))
-            )
         }
         .onAppear {
             if !projects.isEmpty {
@@ -83,7 +74,8 @@ extension ProjectsView {
             try modelContext.save()
             selectedProject = newProject 
         } catch {
-            currentError = ProjectError(type: .createProject, underlyingError: error)
+            let error = ProjectError(type: .createProject, underlyingError: error)
+            toastPresenter.showToast(.error, withMessage: error.errorDescription)
         }
     }
 }
@@ -92,4 +84,5 @@ extension ProjectsView {
     ProjectsView(selectedProject: .constant(nil))
         .frame(width: 250)
         .modelContainer(for: Project.self, inMemory: true)
+        .environment(ToastPresenter())
 }

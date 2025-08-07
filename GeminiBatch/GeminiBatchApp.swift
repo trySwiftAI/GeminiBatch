@@ -16,5 +16,6 @@ struct GeminiBatchApp: App {
                 .tint(Color.orange.opacity(0.8))
         }
         .modelContainer(for: Project.self)
+        .environment(ToastPresenter())
     }
 }

@@ -10,13 +10,11 @@ import SwiftData
 
 struct ProjectOverviewView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(ToastPresenter.self) private var toastPresenter
     
     let project: Project
     
     @Binding var selectedProject: Project?
-    
-    @Binding var currentError: ProjectError?
-    @State private var showErrorToast = false
     
     @State var showingDeleteAlert = false
     @State var isEditing: Bool = false
@@ -70,13 +68,6 @@ struct ProjectOverviewView: View {
                 showingDeleteAlert = true
             }
         }
-        .overlay {
-            if let currentError = currentError, showErrorToast {
-                let toastPresenter = ToastPresenter(message: currentError.errorDescription, type: .error, isPresented: true)
-                ToastView()
-                    .environment(toastPresenter)
-            }
-        }
     }
 }
 
@@ -124,7 +115,8 @@ extension ProjectOverviewView {
     private func finishEditing() {
         let trimmedName = project.name.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedName.isEmpty {
-            currentError = ProjectError(type: .validation("Project name cannot be empty."))
+            let error = ProjectError(type: .validation("Project name cannot be empty."))
+            toastPresenter.showToast(.error, withMessage: error.errorDescription)
             return
         }
         
@@ -136,7 +128,8 @@ extension ProjectOverviewView {
             isEditing = false
             isTextFieldFocused = false
         } catch {
-            currentError = ProjectError(type: .updateProject, underlyingError: error)
+            let error = ProjectError(type: .updateProject, underlyingError: error)
+            toastPresenter.showToast(.error, withMessage: error.errorDescription)
         }
     }
     
@@ -150,7 +143,8 @@ extension ProjectOverviewView {
         do {
             try modelContext.save()
         } catch {
-            currentError = ProjectError(type: .deleteProject, underlyingError: error)
+            let error = ProjectError(type: .deleteProject, underlyingError: error)
+            toastPresenter.showToast(.error, withMessage: error.errorDescription)
         }
     }
 }

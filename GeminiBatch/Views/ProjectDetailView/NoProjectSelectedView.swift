@@ -29,4 +29,5 @@ struct NoProjectSelectedView: View {
 
 #Preview {
     NoProjectSelectedView()
+        .environment(ToastPresenter())
 }
