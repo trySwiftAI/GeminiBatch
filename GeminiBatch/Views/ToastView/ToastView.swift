@@ -23,9 +23,7 @@ struct ToastView: View {
             Spacer()
             
             Button {
-                withAnimation {
-                    toastPresenter.isPresented = false
-                }
+                toastPresenter.hideToast()
             } label: {
                 Image(systemName: "xmark")
                     .font(.caption)
