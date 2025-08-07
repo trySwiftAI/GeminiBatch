@@ -132,7 +132,7 @@ struct FileUploadView: View {
             processFiles(urls, for: project)
         case .failure(let error):
             let errorMessage = "Failed to import files: \(error.localizedDescription)"
-            toastPresenter.showToast(.error, withMessage: errorMessage)
+            toastPresenter.showErrorToast(withMessage: errorMessage)
         }
     }
     
@@ -155,7 +155,7 @@ struct FileUploadView: View {
                     let uploadedBatchFilesCount = processedBatchFiles.count
                     if uploadedBatchFilesCount > 0 {
                         let successMessage = "Successfully uploaded \(uploadedBatchFilesCount) file\(uploadedBatchFilesCount == 1 ? "" : "s")"
-                        toastPresenter.showToast(.success, withMessage: successMessage)
+                        toastPresenter.showSuccessToast(withMessage: successMessage)
                     }
                     
                     uploadProgress = 1.0
@@ -169,7 +169,7 @@ struct FileUploadView: View {
             } catch {
                 await MainActor.run {
                     let errorMessage = "Failed to upload files: \(String(describing: error))"
-                    toastPresenter.showToast(.error, withMessage: errorMessage)
+                    toastPresenter.showErrorToast(withMessage: errorMessage)
                     isUploading = false
                 }
             }

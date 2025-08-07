@@ -75,7 +75,7 @@ extension ProjectsView {
             selectedProject = newProject 
         } catch {
             let error = ProjectError(type: .createProject, underlyingError: error)
-            toastPresenter.showToast(.error, withMessage: error.errorDescription)
+            toastPresenter.showErrorToast(withMessage: error.errorDescription)
         }
     }
 }

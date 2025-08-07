@@ -116,7 +116,7 @@ extension ProjectOverviewView {
         let trimmedName = project.name.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedName.isEmpty {
             let error = ProjectError(type: .validation("Project name cannot be empty."))
-            toastPresenter.showToast(.error, withMessage: error.errorDescription)
+            toastPresenter.showErrorToast(withMessage: error.errorDescription)
             return
         }
         
@@ -129,7 +129,7 @@ extension ProjectOverviewView {
             isTextFieldFocused = false
         } catch {
             let error = ProjectError(type: .updateProject, underlyingError: error)
-            toastPresenter.showToast(.error, withMessage: error.errorDescription)
+            toastPresenter.showErrorToast(withMessage: error.errorDescription)
         }
     }
     
@@ -144,7 +144,7 @@ extension ProjectOverviewView {
             try modelContext.save()
         } catch {
             let error = ProjectError(type: .deleteProject, underlyingError: error)
-            toastPresenter.showToast(.error, withMessage: error.errorDescription)
+            toastPresenter.showErrorToast(withMessage: error.errorDescription)
         }
     }
 }

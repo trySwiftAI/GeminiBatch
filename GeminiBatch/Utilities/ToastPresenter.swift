@@ -24,9 +24,27 @@ class ToastPresenter {
     }
     
     func showToast(_ type: ToastType, withMessage message: String) {
-        self.message = message
-        self.type = type
-        self.isPresented = true
+        withAnimation {
+            self.message = message
+            self.type = type
+            self.isPresented = true
+        }
+    }
+    
+    func showErrorToast(withMessage message: String) {
+        showToast(.error, withMessage: message)
+    }
+    
+    func showSuccessToast(withMessage message: String) {
+        showToast(.success, withMessage: message)
+    }
+    
+    func showInfoToast(withMessage message: String) {
+        showToast(.info, withMessage: message)
+    }
+    
+    func showWarningToast(withMessage message: String) {
+        showToast(.warning, withMessage: message)
     }
     
     func hideToast() {
