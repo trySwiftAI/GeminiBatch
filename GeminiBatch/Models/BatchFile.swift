@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class BatchFile: Sendable {
+final class BatchFile {
     
     var name: String
     var originalPath: String
@@ -48,3 +48,4 @@ final class BatchFile: Sendable {
         return formatter.string(fromByteCount: fileSize)
     }
 }
+

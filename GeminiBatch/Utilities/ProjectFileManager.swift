@@ -15,34 +15,21 @@ actor ProjectFileManager {
     private let projectsDirectory: URL
     private let projectDirectory: URL
     
-    private let project: Project
+    private let projectID: String
     
-    @MainActor
-    init(project: Project) {
-        self.project = project
+    init(projectID: String) {
+        self.projectID = projectID
         self.projectsDirectory = documentsDirectory.appendingPathComponent("GeminiBatch", isDirectory: true)
         self.projectDirectory = self.projectsDirectory.appendingPathComponent(
-            project.id.uuidString,
+            projectID,
             isDirectory: true
         )
     }
         
     func processBatchFiles(
         fromURLs urls: [URL]
-    ) async throws -> [BatchFile] {
-        let batchFilesData: [BatchFileData] = try await processFileURLs(urls)
-
-        return await MainActor.run {
-            batchFilesData.map { fileData in
-                BatchFile(
-                    name: fileData.name,
-                    originalURL: fileData.originalURL,
-                    storedURL: fileData.storedURL,
-                    fileSize: fileData.fileSize,
-                    project: project
-                )
-            }
-        }
+    ) async throws -> [BatchFileData] {
+        return try await processFileURLs(urls)
     }
     
     @MainActor
@@ -51,7 +38,7 @@ actor ProjectFileManager {
         inModelContext modelContext: ModelContext
     ) async throws(ProjectFileError) {
         do {
-            try await Task.detached {
+            try await Task {
                 if FileManager.default.fileExists(atPath: file.storedURL.path) {
                     do {
                         try FileManager.default.removeItem(at: file.storedURL)
@@ -86,28 +73,24 @@ actor ProjectFileManager {
         }
     }
     
-    func deleteProjectDirectory(
-        forProjectID projectID: UUID
-    ) async throws(ProjectFileError) {
-        let projectDirectory = try await getProjectDirectory(forProjectID: projectID.uuidString)
-        
+    func deleteProjectDirectory() async throws(ProjectFileError) {
         do {
             try await Task.detached {
-                if FileManager.default.fileExists(atPath: projectDirectory.path) {
+                if FileManager.default.fileExists(atPath: self.projectDirectory.path) {
                     do {
-                        try FileManager.default.removeItem(at: projectDirectory)
+                        try FileManager.default.removeItem(at: self.projectDirectory)
                     } catch let error as CocoaError {
                         switch error.code {
                         case .fileReadNoPermission, .fileWriteNoPermission:
                             throw ProjectFileError.permissionDenied(
                                 operation: "directory deletion",
-                                path: projectDirectory.path
+                                path: self.projectDirectory.path
                             )
                         default:
-                            throw ProjectFileError.fileRemovalFailed(path: projectDirectory.path)
+                            throw ProjectFileError.fileRemovalFailed(path: self.projectDirectory.path)
                         }
                     } catch {
-                        throw ProjectFileError.fileRemovalFailed(path: projectDirectory.path)
+                        throw ProjectFileError.fileRemovalFailed(path: self.projectDirectory.path)
                     }
                 }
             }.value
@@ -123,7 +106,7 @@ actor ProjectFileManager {
 
 extension ProjectFileManager {
     
-    private struct BatchFileData {
+    struct BatchFileData {
         var name: String
         var originalURL: URL
         var storedURL: URL
@@ -225,29 +208,6 @@ extension ProjectFileManager {
             try FileManager.default.createDirectory(at: self.projectDirectory, withIntermediateDirectories: true)
         } catch {
             throw ProjectFileError.directoryCreationFailed(path: self.projectDirectory.path)
-        }
-    }
-    
-    private func getProjectDirectory(
-        forProjectID projectID: String
-    ) async throws(ProjectFileError) -> URL {
-        do {
-            return try await Task.detached {
-                let projectDirectory = self.projectsDirectory.appendingPathComponent(
-                    projectID,
-                    isDirectory: true
-                )
-                
-                guard FileManager.default.fileExists(atPath: projectDirectory.path) else {
-                    throw ProjectFileError.fileNotFound(path: projectDirectory.path)
-                }
-                
-                return projectDirectory
-            }.value
-        } catch let error as ProjectFileError {
-            throw error
-        } catch {
-            throw ProjectFileError.fileNotFound(path: "project directory")
         }
     }
     

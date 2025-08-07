@@ -10,6 +10,7 @@ import SwiftUI
 struct FileRowView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
+    @Environment(ToastPresenter.self) private var toastPresenter
 
     let file: BatchFile
     
@@ -79,10 +80,12 @@ struct FileRowView: View {
     
     private func deleteFile(_ file: BatchFile) async {
         do {
-            try await ProjectFileManager(project: file.project).deleteBatchFile(file, inModelContext: modelContext)
+            try await ProjectFileManager(
+                projectID: file.project.id.uuidString)
+            .deleteBatchFile(file, inModelContext: modelContext)
         } catch {
-            // TODO: Handle error - maybe show an alert
-            print("Failed to delete file: \(error.localizedDescription)")
+            let errorMessage = "Failed to delete file: \(error.localizedDescription)"
+            toastPresenter.showErrorToast(withMessage: errorMessage)
         }
     }
 }

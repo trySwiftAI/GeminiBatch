@@ -18,9 +18,11 @@ class ToastPresenter {
     }
     
     init(message: String, type: ToastType, isPresented: Bool) {
-        self.message = message
-        self.type = type
-        self.isPresented = isPresented
+        withAnimation {
+            self.message = message
+            self.type = type
+            self.isPresented = isPresented
+        }
     }
     
     func showToast(_ type: ToastType, withMessage message: String) {

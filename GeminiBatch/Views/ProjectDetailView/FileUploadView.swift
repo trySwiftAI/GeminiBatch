@@ -144,9 +144,19 @@ struct FileUploadView: View {
         
         Task {
             do {
-                let processedBatchFiles = try await ProjectFileManager(project: project).processBatchFiles(fromURLs: urls)
+                let batchFilesData = try await ProjectFileManager(projectID: project.id.uuidString).processBatchFiles(fromURLs: urls)
                 
                 try await MainActor.run {
+                    let processedBatchFiles = batchFilesData.map { fileData in
+                        BatchFile(
+                            name: fileData.name,
+                            originalURL: fileData.originalURL,
+                            storedURL: fileData.storedURL,
+                            fileSize: fileData.fileSize,
+                            project: project
+                        )
+                    }
+                    
                     for processedBatchFile in processedBatchFiles {
                         modelContext.insert(processedBatchFile)
                     }
