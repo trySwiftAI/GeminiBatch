@@ -5,7 +5,9 @@
 //  Created by Natasha Murashev on 8/6/25.
 //
 
-enum ProjectFileError: Error, CustomStringConvertible {
+import Foundation
+
+enum ProjectFileError: Error, CustomStringConvertible, LocalizedError {
     case invalidFileType(fileName: String, expectedType: String)
     case fileNotFound(path: String)
     case permissionDenied(operation: String, path: String)
