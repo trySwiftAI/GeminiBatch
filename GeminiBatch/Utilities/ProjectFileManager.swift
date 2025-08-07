@@ -27,9 +27,10 @@ actor ProjectFileManager {
     }
         
     func processBatchFiles(
-        fromURLs urls: [URL]
+        fromURLs urls: [URL],
+        fromFileImporter fileImporter: Bool
     ) async throws -> [BatchFileData] {
-        return try await processFileURLs(urls)
+        return try await processFileURLs(urls, fromFileImporter: fileImporter)
     }
     
     @MainActor
@@ -114,7 +115,8 @@ extension ProjectFileManager {
     }
     
     private func processFileURLs(
-        _ urls: [URL]
+        _ urls: [URL],
+        fromFileImporter: Bool = false
     ) async throws(ProjectFileError) -> [BatchFileData] {
         
         do {
@@ -125,6 +127,22 @@ extension ProjectFileManager {
                 try await self.createProjectDirectoryIfNeeded()
                 
                 for url in urls {
+                    // Check security access for file importer URLs
+                    if fromFileImporter {
+                        guard url.startAccessingSecurityScopedResource() else {
+                            throw ProjectFileError.permissionDenied(
+                                operation: "file access",
+                                path: url.path
+                            )
+                        }
+                    }
+                    
+                    defer {
+                        if fromFileImporter {
+                            url.stopAccessingSecurityScopedResource()
+                        }
+                    }
+                    
                     // Validate file type
                     guard url.pathExtension.lowercased() == "jsonl" else {
                         throw ProjectFileError.invalidFileType(

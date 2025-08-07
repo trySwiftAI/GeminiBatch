@@ -118,7 +118,7 @@ struct FileUploadView: View {
             
             if !collectedURLs.isEmpty {
                 await MainActor.run {
-                    processFiles(collectedURLs, for: project)
+                    processFiles(collectedURLs, for: project, fromFileImporter: false)
                 }
             }
         }
@@ -129,14 +129,14 @@ struct FileUploadView: View {
     private func handleFileImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
-            processFiles(urls, for: project)
+            processFiles(urls, for: project, fromFileImporter: true)
         case .failure(let error):
             let errorMessage = "Failed to import files: \(error.localizedDescription)"
             toastPresenter.showErrorToast(withMessage: errorMessage)
         }
     }
     
-    private func processFiles(_ urls: [URL], for project: Project) {
+    private func processFiles(_ urls: [URL], for project: Project, fromFileImporter: Bool) {
         guard !urls.isEmpty else { return }
         isUploading = true
         uploadProgress = 0.0
@@ -144,7 +144,7 @@ struct FileUploadView: View {
         
         Task {
             do {
-                let batchFilesData = try await ProjectFileManager(projectID: project.id.uuidString).processBatchFiles(fromURLs: urls)
+                let batchFilesData = try await ProjectFileManager(projectID: project.id.uuidString).processBatchFiles(fromURLs: urls, fromFileImporter: fromFileImporter)
                 
                 try await MainActor.run {
                     let processedBatchFiles = batchFilesData.map { fileData in
