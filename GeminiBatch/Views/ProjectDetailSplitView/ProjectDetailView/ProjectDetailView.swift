@@ -12,9 +12,14 @@ struct ProjectDetailView: View {
     
     let project: Project
     
-    @State private var geminiAPIKey: String = ""
+    @State private var keychainManager: ProjectKeychainManager
     @State private var isAPIKeyVisible: Bool = false
     @FocusState private var isAPIKeyFocused
+    
+    init(project: Project) {
+        self.project = project
+        self._keychainManager = State(initialValue: ProjectKeychainManager(project: project))
+    }
         
     var body: some View {
         VStack(spacing: 20) {
@@ -39,6 +44,9 @@ struct ProjectDetailView: View {
             if toastPresenter.isPresented && !toastPresenter.message.isEmpty {
                 ToastView()
             }
+        }
+        .onChange(of: project.id) {
+            keychainManager = ProjectKeychainManager(project: project)
         }
     }
 }
@@ -76,18 +84,18 @@ extension ProjectDetailView {
                 ZStack(alignment: .trailing) {
                     Group {
                         if isAPIKeyVisible {
-                            TextField("Enter your Gemini API Key", text: $geminiAPIKey)
+                            TextField("Enter your Gemini API Key", text: $keychainManager.geminiAPIKey)
                         } else {
-                            SecureField("Enter your Gemini API Key", text: $geminiAPIKey)
+                            SecureField("Enter your Gemini API Key", text: $keychainManager.geminiAPIKey)
                         }
                     }
                     .textFieldStyle(.plain)
                     .padding(6)
-                    .padding(.trailing, !geminiAPIKey.isEmpty ? 30 : 6)
+                    .padding(.trailing, !keychainManager.geminiAPIKey.isEmpty ? 30 : 6)
                     
-                    if !geminiAPIKey.isEmpty {
+                    if !keychainManager.geminiAPIKey.isEmpty {
                         Button(action: {
-                            geminiAPIKey = ""
+                            keychainManager.geminiAPIKey = ""
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(.secondary)
@@ -99,7 +107,7 @@ extension ProjectDetailView {
                 }
                 .overlay(
                     ConcentricRectangle(corners: .fixed(8), isUniform: true)
-                        .stroke(geminiAPIKey.isEmpty ? .red.opacity(0.5) : .mint.opacity(0.3), lineWidth: 2)
+                        .stroke(keychainManager.geminiAPIKey.isEmpty ? .red.opacity(0.5) : .mint.opacity(0.3), lineWidth: 2)
                 )
                 
                 Button(action: {
