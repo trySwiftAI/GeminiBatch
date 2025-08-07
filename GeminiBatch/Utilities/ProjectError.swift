@@ -60,6 +60,7 @@ struct ProjectError: Error, Identifiable, Equatable {
         self.underlyingError = underlyingError
     }
     
+    @MainActor
     var errorDescription: String {
         return type.message
     }
