@@ -11,14 +11,18 @@ struct ProjectDetailView: View {
     @Environment(ToastPresenter.self) private var toastPresenter
     
     let project: Project
+    
+    @State private var geminiAPIKey: String = ""
+    @State private var isAPIKeyVisible: Bool = false
+    @FocusState private var isAPIKeyFocused
         
     var body: some View {
         VStack(spacing: 20) {
             projectHeader(project)
             Divider()
-            
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    apiKeySection
                     if !project.batchFiles.isEmpty {
                         fileListView(project.batchFiles)
                     }
@@ -55,6 +59,59 @@ extension ProjectDetailView {
                 .foregroundColor(.secondary)
         }
         .padding()
+    }
+    
+    @ViewBuilder
+    private var apiKeySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("The Gemini API key for this project (required)")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+            }
+            
+            HStack {
+                ZStack(alignment: .trailing) {
+                    Group {
+                        if isAPIKeyVisible {
+                            TextField("Enter your Gemini API Key", text: $geminiAPIKey)
+                        } else {
+                            SecureField("Enter your Gemini API Key", text: $geminiAPIKey)
+                        }
+                    }
+                    .textFieldStyle(.plain)
+                    .padding(6)
+                    .padding(.trailing, !geminiAPIKey.isEmpty ? 30 : 6)
+                    
+                    if !geminiAPIKey.isEmpty {
+                        Button(action: {
+                            geminiAPIKey = ""
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                                .background(.background)
+                        }
+                        .buttonStyle(.borderless)
+                        .padding(.trailing, 6)
+                    }
+                }
+                .overlay(
+                    ConcentricRectangle(corners: .fixed(8), isUniform: true)
+                        .stroke(geminiAPIKey.isEmpty ? .red.opacity(0.5) : .mint.opacity(0.3), lineWidth: 2)
+                )
+                
+                Button(action: {
+                    isAPIKeyVisible.toggle()
+                }) {
+                    Image(systemName: isAPIKeyVisible ? "eye.slash" : "eye")
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+        .padding(.horizontal)
     }
     
     @ViewBuilder

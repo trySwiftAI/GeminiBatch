@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		FA6D08C92E44A2750065C9E0 /* SplitView in Frameworks */ = {isa = PBXBuildFile; productRef = FA6D08C82E44A2750065C9E0 /* SplitView */; };
+		FA6D0B442E44AA4E0065C9E0 /* AIProxy in Frameworks */ = {isa = PBXBuildFile; productRef = FA6D0B432E44AA4E0065C9E0 /* AIProxy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FA6D08C92E44A2750065C9E0 /* SplitView in Frameworks */,
+				FA6D0B442E44AA4E0065C9E0 /* AIProxy in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,6 +86,7 @@
 			name = GeminiBatch;
 			packageProductDependencies = (
 				FA6D08C82E44A2750065C9E0 /* SplitView */,
+				FA6D0B432E44AA4E0065C9E0 /* AIProxy */,
 			);
 			productName = GeminiBatch;
 			productReference = FA1D9B0D2E287FCC007103B2 /* GeminiBatch.app */;
@@ -115,6 +118,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				FA6D08C72E44A2750065C9E0 /* XCRemoteSwiftPackageReference "SplitView" */,
+				FA6D0B422E44AA4E0065C9E0 /* XCLocalSwiftPackageReference "AIProxySwift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = FA1D9B0E2E287FCC007103B2 /* Products */;
@@ -400,6 +404,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		FA6D0B422E44AA4E0065C9E0 /* XCLocalSwiftPackageReference "AIProxySwift" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = AIProxySwift;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		FA6D08C72E44A2750065C9E0 /* XCRemoteSwiftPackageReference "SplitView" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -416,6 +427,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = FA6D08C72E44A2750065C9E0 /* XCRemoteSwiftPackageReference "SplitView" */;
 			productName = SplitView;
+		};
+		FA6D0B432E44AA4E0065C9E0 /* AIProxy */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AIProxy;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
