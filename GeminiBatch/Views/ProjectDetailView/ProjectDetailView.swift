@@ -8,9 +8,10 @@
 import SwiftUI
 
 struct ProjectDetailView: View {
+    @Environment(ToastPresenter.self) private var toastPresenter
     
     let project: Project
-    
+        
     var body: some View {
         VStack(spacing: 20) {
             projectHeader(project)
@@ -29,6 +30,11 @@ struct ProjectDetailView: View {
             }
             .padding(.horizontal)
             Spacer()
+        }
+        .overlay(alignment: .top) {
+            if toastPresenter.isPresented && !toastPresenter.message.isEmpty {
+                ToastView()
+            }
         }
     }
 }

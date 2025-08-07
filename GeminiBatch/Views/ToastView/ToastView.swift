@@ -8,19 +8,15 @@
 import SwiftUI
 
 struct ToastView: View {
-    
-    let message: String
-    let type: ToastType
-    
-    @Binding var isPresented: Bool
+    @Environment(ToastPresenter.self) var toastPresenter: ToastPresenter
     
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: type.iconName)
-                .foregroundColor(type.color)
+            Image(systemName: toastPresenter.type.iconName)
+                .foregroundColor(toastPresenter.type.color)
                 .font(.title2)
             
-            Text(message)
+            Text(toastPresenter.message)
                 .font(.body)
                 .foregroundColor(.primary)
             
@@ -28,7 +24,7 @@ struct ToastView: View {
             
             Button {
                 withAnimation {
-                    isPresented = false
+                    toastPresenter.isPresented = false
                 }
             } label: {
                 Image(systemName: "xmark")
@@ -43,52 +39,62 @@ struct ToastView: View {
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
         .background(
-            ConcentricRectangle(corners: .concentric, isUniform: true)
-                .glassEffect(.regular.interactive(), in: .containerRelative)
+            ConcentricRectangle(corners: .fixed(12), isUniform: true)
+                .fill(.ultraThinMaterial)
         )
         .overlay(
-            ConcentricRectangle(corners: .concentric, isUniform: true)
-                .stroke(type.color.opacity(0.3), lineWidth: 1)
+            ConcentricRectangle(corners: .fixed(12), isUniform: true)
+                .stroke(toastPresenter.type.color.opacity(0.3), lineWidth: 1)
         )
+        .onAppear {
+            Task {
+                try await Task.sleep(for: .seconds(4))
+                toastPresenter.hideToast()
+            }
+        }
     }
 }
 
 #Preview("Success") {
-    @Previewable @State var isPresented = true
-    
-    ToastView(
+    let toastPresenter = ToastPresenter(
         message: "Success!! Your files have been saved",
         type: .success,
-        isPresented: $isPresented
+        isPresented: true
     )
+    
+    ToastView()
+        .environment(toastPresenter)
 }
 
 #Preview("Error") {
-    @Previewable @State var isPresented = true
-    
-    ToastView(
+    let toastPresenter = ToastPresenter(
         message: "Error!! Something went wrong!",
         type: .error,
-        isPresented: $isPresented
+        isPresented: true
     )
+    
+    ToastView()
+        .environment(toastPresenter)
 }
 
 #Preview("Info") {
-    @Previewable @State var isPresented = true
-    
-    ToastView(
+    let toastPresenter = ToastPresenter(
         message: "Info: Upload files to get started",
         type: .info,
-        isPresented: $isPresented
+        isPresented: true
     )
+    
+    ToastView()
+        .environment(toastPresenter)
 }
 
 #Preview("Warning") {
-    @Previewable @State var isPresented = true
-    
-    ToastView(
+    let toastPresenter = ToastPresenter(
         message: "Warning: You're out of credit limits",
         type: .warning,
-        isPresented: $isPresented
+        isPresented: true
     )
+    
+    ToastView()
+        .environment(toastPresenter)
 }

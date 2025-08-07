@@ -18,6 +18,7 @@ struct ContentView: View {
         } detail: {
             if let project = selectedProject {
                 ProjectDetailView(project: project)
+                    .environment(ToastPresenter())
             } else {
                 NoProjectSelectedView()
             }

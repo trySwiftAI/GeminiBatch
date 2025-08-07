@@ -70,21 +70,11 @@ struct ProjectOverviewView: View {
                 showingDeleteAlert = true
             }
         }
-        .errorToast(
-            message: currentError?.errorDescription ?? "",
-            isPresented: $showErrorToast
-        )
-        .onChange(of: currentError) { _, newError in
-            if newError != nil {
-                showErrorToast = true
-                // Auto-dismiss the error after showing the toast
-                Task {
-                    try await Task.sleep(for: .seconds(4))
-                    showErrorToast = false
-                    currentError = nil
-                }
-            } else {
-                showErrorToast = false
+        .overlay {
+            if let currentError = currentError, showErrorToast {
+                let toastPresenter = ToastPresenter(message: currentError.errorDescription, type: .error, isPresented: true)
+                ToastView()
+                    .environment(toastPresenter)
             }
         }
     }

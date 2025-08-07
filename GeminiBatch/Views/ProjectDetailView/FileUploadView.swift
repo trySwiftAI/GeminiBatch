@@ -5,6 +5,7 @@ import SwiftData
 
 struct FileUploadView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(ToastPresenter.self) private var toastPresenter
     
     let project: Project
     
@@ -12,12 +13,6 @@ struct FileUploadView: View {
     @State private var isUploading = false
     @State private var uploadProgress: Double = 0.0
     @State private var showingFilePicker = false
-    
-    @State private var showErrorToast = false
-    @State private var errorMessage = ""
-    
-    @State private var showSuccessToast = false
-    @State private var successMessage = ""
         
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -39,14 +34,6 @@ struct FileUploadView: View {
         ) { result in
             handleFileImport(result)
         }
-        .errorToast(
-            message: errorMessage,
-            isPresented: $showErrorToast
-        )
-        .successToast(
-            message: successMessage,
-            isPresented: $showSuccessToast
-        )
     }
     
     private var uploadArea: some View {
@@ -144,8 +131,8 @@ struct FileUploadView: View {
         case .success(let urls):
             processFiles(urls, for: project)
         case .failure(let error):
-            errorMessage = "Failed to import files: \(error.localizedDescription)"
-            showErrorToast = true
+            let errorMessage = "Failed to import files: \(error.localizedDescription)"
+            toastPresenter.showToast(.error, withMessage: errorMessage)
         }
     }
     
@@ -153,8 +140,7 @@ struct FileUploadView: View {
         guard !urls.isEmpty else { return }
         isUploading = true
         uploadProgress = 0.0
-        showErrorToast = false
-        showSuccessToast = false
+        toastPresenter.hideToast()
         
         Task {
             do {
@@ -168,8 +154,8 @@ struct FileUploadView: View {
                     
                     let uploadedBatchFilesCount = processedBatchFiles.count
                     if uploadedBatchFilesCount > 0 {
-                        successMessage = "Successfully uploaded \(uploadedBatchFilesCount) file\(uploadedBatchFilesCount == 1 ? "" : "s")"
-                        showSuccessToast = true
+                        let successMessage = "Successfully uploaded \(uploadedBatchFilesCount) file\(uploadedBatchFilesCount == 1 ? "" : "s")"
+                        toastPresenter.showToast(.success, withMessage: successMessage)
                     }
                     
                     uploadProgress = 1.0
@@ -182,8 +168,8 @@ struct FileUploadView: View {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = "Failed to upload files: \(String(describing: error))"
-                    showErrorToast = true
+                    let errorMessage = "Failed to upload files: \(String(describing: error))"
+                    toastPresenter.showToast(.error, withMessage: errorMessage)
                     isUploading = false
                 }
             }
@@ -199,4 +185,5 @@ struct FileUploadView: View {
         for: [Project.self],
         inMemory: true
     )
+    .environment(ToastPresenter())
 }
