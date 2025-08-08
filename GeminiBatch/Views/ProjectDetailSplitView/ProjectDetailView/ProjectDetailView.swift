@@ -38,6 +38,7 @@ struct ProjectDetailView: View {
                 .padding(.leading, 10)
             }
             .padding(.horizontal)
+            .scrollIndicators(.hidden)
             Spacer()
         }
         .overlay(alignment: .top) {
