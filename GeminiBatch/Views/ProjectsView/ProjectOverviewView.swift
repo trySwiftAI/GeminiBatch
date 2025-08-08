@@ -57,7 +57,9 @@ struct ProjectOverviewView: View {
                 
             }
             Button("Delete", role: .destructive) {
-                deleteProject()
+                Task {
+                    await deleteProject()
+                }
             }
         } message: {
             Text("Are you sure you want to delete \"\(project.name)\"? This action cannot be undone.")
@@ -133,14 +135,14 @@ extension ProjectOverviewView {
         }
     }
     
-    private func deleteProject() {
+    private func deleteProject() async {
         if selectedProject == project {
             selectedProject = nil
         }
         
-        modelContext.delete(project)
-        
         do {
+            try await ProjectFileManager(projectID: project.id.uuidString).deleteProjectDirectory()
+            modelContext.delete(project)
             try modelContext.save()
         } catch {
             let error = ProjectError(type: .deleteProject, underlyingError: error)
