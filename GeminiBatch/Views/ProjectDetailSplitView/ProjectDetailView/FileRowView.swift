@@ -5,12 +5,14 @@
 //  Created by Natasha Murashev on 7/31/25.
 //
 
+import SplitView
+import SwiftData
 import SwiftUI
 
 struct FileRowView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.openWindow) private var openWindow
     @Environment(ToastPresenter.self) private var toastPresenter
+    @EnvironmentObject private var hide: SideHolder
 
     let file: BatchFile
     
@@ -19,73 +21,56 @@ struct FileRowView: View {
             HStack {
                 Image(systemName: "doc.text.fill")
                     .foregroundColor(.accentColor)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(file.name)
-                        .font(.headline)
-                        .lineLimit(1)
-                    
-                    HStack(spacing: 12) {
-                        Label(file.formattedFileSize, systemImage: "info.circle")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Label(file.uploadedAt.formatted(date: .abbreviated, time: .shortened), systemImage: "clock")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
+                FileDetailView(file: file)
                 Spacer()
-                
-                HStack(spacing: 8) {
-                    Button {
-                        openFile(file)
-                    } label: {
-                        Image(systemName: "eye")
-                            .foregroundColor(.blue)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("View file")
-                    
-                    Button {
-                        Task {
-                            await deleteFile(file)
-                        }
-                    } label: {
-                        Image(systemName: "trash")
-                            .foregroundColor(.red)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Delete file")
-                }
+                runFileButton
+                    .padding(.horizontal, 30)
             }
-            
-            // File path info
-            Text(file.storedURL.path)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
         }
         .padding()
         .cornerRadius(8)
         .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
     }
-    
-    private func openFile(_ file: BatchFile) {
-        // TODO: Implement file viewing functionality
-        NSWorkspace.shared.open(file.storedURL)
-    }
-    
-    private func deleteFile(_ file: BatchFile) async {
-        do {
-            try await ProjectFileManager(
-                projectID: file.project.id.uuidString)
-            .deleteBatchFile(file, inModelContext: modelContext)
-        } catch {
-            let errorMessage = "Failed to delete file: \(error.localizedDescription)"
-            toastPresenter.showErrorToast(withMessage: errorMessage)
+}
+
+
+// MARK: Action Buttons
+extension FileRowView {
+    @ViewBuilder
+    private var runFileButton: some View {
+        Button {
+            withAnimation {
+                hide.side = nil
+            }
+        } label: {
+            Image(systemName: "play")
+                .padding(8)
+                .font(.system(size: 16, weight: .semibold))
         }
+        .buttonStyle(.glassProminent)
+        .buttonBorderShape(.circle)
+        .tint(.orange.opacity(0.5))
+        .help("Run file")
+        .scaleEffect(1.2)
     }
+}
+
+#Preview {
+    let project = Project(name: "Sample Project")
+    let file = BatchFile(
+        name: "sample_data.jsonl",
+        originalURL: URL(fileURLWithPath: "/Users/example/Documents/sample_data.jsonl"),
+        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/sample_data.jsonl"),
+        fileSize: 2048576, // 2MB
+        project: project
+    )
+    
+    return FileRowView(file: file)
+        .environment(ToastPresenter())
+        .modelContainer(
+            for: [Project.self, BatchFile.self],
+            inMemory: true
+        )
+        .frame(width: 400)
+        .padding()
 }

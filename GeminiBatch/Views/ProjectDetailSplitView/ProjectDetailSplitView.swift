@@ -18,6 +18,7 @@ struct ProjectDetailSplitView: View {
         Split(
             primary: {
                 ProjectDetailView(project: project)
+                    .environmentObject(hide)
             },
             secondary: {
                 Text("Running")
