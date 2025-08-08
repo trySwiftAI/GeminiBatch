@@ -11,6 +11,7 @@ import SwiftUI
 
 struct FileRowView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(ToastPresenter.self) private var toastPresenter
     @EnvironmentObject private var hide: SideHolder
 
@@ -36,6 +37,7 @@ struct FileRowView: View {
 
 // MARK: Action Buttons
 extension FileRowView {
+    
     @ViewBuilder
     private var runFileButton: some View {
         Button {
@@ -49,7 +51,7 @@ extension FileRowView {
         }
         .buttonStyle(.glassProminent)
         .buttonBorderShape(.circle)
-        .tint(.orange.opacity(0.5))
+        .tint(.orange.opacity(colorScheme == .dark ? 0.5 : 0.8))
         .help("Run file")
         .scaleEffect(1.2)
     }
