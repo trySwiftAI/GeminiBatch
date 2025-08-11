@@ -13,18 +13,11 @@ struct ProjectDetailView: View {
     let project: Project
     @Binding var selectedBatchFile: BatchFile?
     @Binding var selectedGeminiModel: GeminiModel
+    @Binding var keychainManager: ProjectKeychainManager
     
-    @State private var keychainManager: ProjectKeychainManager
     @State private var isAPIKeyVisible: Bool = false
     @FocusState private var isAPIKeyFocused
     
-    init(project: Project, selectedBatchFile: Binding<BatchFile?>, selectedGeminiModel: Binding<GeminiModel>) {
-        self.project = project
-        self._selectedBatchFile = selectedBatchFile
-        self._selectedGeminiModel = selectedGeminiModel
-        self._keychainManager = State(initialValue: ProjectKeychainManager(project: project))
-    }
-        
     var body: some View {
         VStack(spacing: 20) {
             projectHeader(project)
@@ -50,9 +43,6 @@ struct ProjectDetailView: View {
             if toastPresenter.isPresented && !toastPresenter.message.isEmpty {
                 ToastView()
             }
-        }
-        .onChange(of: project.id) {
-            keychainManager = ProjectKeychainManager(project: project)
         }
     }
 }

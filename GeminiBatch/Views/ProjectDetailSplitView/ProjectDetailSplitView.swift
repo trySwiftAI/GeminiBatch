@@ -15,6 +15,12 @@ struct ProjectDetailSplitView: View {
     @StateObject private var hide = SideHolder(.secondary)
     @State private var selectedBatchFile: BatchFile?
     @State private var selectedGeminiModel: GeminiModel = .flash
+    @State private var keychainManager: ProjectKeychainManager
+    
+    init(project: Project) {
+        self.project = project
+        self._keychainManager = State(initialValue: ProjectKeychainManager(project: project))
+    }
     
     var body: some View {
         Split(
@@ -22,7 +28,8 @@ struct ProjectDetailSplitView: View {
                 ProjectDetailView(
                     project: project, 
                     selectedBatchFile: $selectedBatchFile,
-                    selectedGeminiModel: $selectedGeminiModel
+                    selectedGeminiModel: $selectedGeminiModel,
+                    keychainManager: $keychainManager
                 )
                 .environmentObject(hide)
             },
@@ -43,6 +50,9 @@ struct ProjectDetailSplitView: View {
             ToolbarItem(placement: .automatic) {
                 toggleHideButton
             }
+        }
+        .onChange(of: project.id) {
+            keychainManager = ProjectKeychainManager(project: project)
         }
     }
 }
