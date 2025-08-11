@@ -15,7 +15,7 @@ final class BatchFile {
     var name: String
     var originalPath: String
     var storedPath: String
-    var resultPath: String
+    var resultPath: String? = nil
     var fileSize: Int64
     var uploadedAt: Date
     var project: Project

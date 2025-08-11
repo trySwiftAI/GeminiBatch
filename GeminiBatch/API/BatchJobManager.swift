@@ -197,6 +197,7 @@ extension BatchJobManager {
         }
         
         let batchResultsData = try await geminiService.downloadBatchResults(responsesFileName: batchJobName)
+        try await batchJobActor.saveResult(id: batchJobID, data: batchResultsData)
     }
 }
 
