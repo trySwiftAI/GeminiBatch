@@ -14,6 +14,7 @@ final class BatchJob {
     var displayJobName: String
     var startedAt: Date? = nil
     var jobStatus: BatchJobStatus
+    var jobStatusMessages: [String] = []
     
     var batchFile: BatchFile
     

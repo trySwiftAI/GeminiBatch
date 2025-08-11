@@ -73,12 +73,22 @@ actor BatchJobActor {
         try modelContext.save()
     }
     
+    func updateBatchJobStatusMessage(id: PersistentIdentifier, statusMessage: String) throws {
+        guard let batchJob = modelContext.model(for: id) as? BatchJob else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        batchJob.jobStatusMessages.append(statusMessage)
+        try modelContext.save()
+    }
+    
     func getBatchJobInfo(id: PersistentIdentifier) -> BatchJobInfo? {
         guard let batchJob = modelContext.model(for: id) as? BatchJob else {
             return nil
         }
         
         return BatchJobInfo(
+            batchFileName: batchJob.batchFile.name,
             jobStatus: batchJob.jobStatus,
             geminiJobName: batchJob.geminiJobName,
             displayJobName: batchJob.displayJobName,
@@ -107,6 +117,7 @@ actor BatchJobActor {
 }
 
 struct BatchJobInfo: Sendable {
+    let batchFileName: String
     let jobStatus: BatchJobStatus
     let geminiJobName: String?
     let displayJobName: String
