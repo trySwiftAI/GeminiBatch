@@ -12,7 +12,7 @@ struct ProjectDetailView: View {
     
     let project: Project
     @Binding var selectedBatchFile: BatchFile?
-    @Binding var selectedGeminiModel: GeminiModel
+    @Binding var selectedGeminiModel: GeminiModel?
     @Binding var keychainManager: ProjectKeychainManager
     
     @State private var isAPIKeyVisible: Bool = false
@@ -25,7 +25,7 @@ struct ProjectDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     apiKeySection
-                    modelSelectionSection
+                    modelSelectionPicker
                     if !project.batchFiles.isEmpty {
                         fileListView(project.batchFiles)
                     }
@@ -119,19 +119,16 @@ extension ProjectDetailView {
     }
     
     @ViewBuilder
-    private var modelSelectionSection: some View {
-        HStack {
-            Picker("Gemini Model", selection: $selectedGeminiModel) {
-                ForEach(GeminiModel.allPredefinedCases, id: \.self) { model in
-                    Text(model.displayName)
-                        .tag(model)
-                }
+    private var modelSelectionPicker: some View {
+        Picker("Gemini Model", selection: $selectedGeminiModel) {
+            ForEach(GeminiModel.allPredefinedCases, id: \.self) { model in
+                Text(model.displayName)
+                    .tag(model)
             }
-            .pickerStyle(.menu)
-            .frame(maxWidth: 300)
-            
-            Spacer()
         }
+        .pickerStyle(.menu)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal)
     }
     
     @ViewBuilder

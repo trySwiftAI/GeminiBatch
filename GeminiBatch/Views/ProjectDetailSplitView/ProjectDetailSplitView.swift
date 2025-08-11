@@ -14,7 +14,7 @@ struct ProjectDetailSplitView: View {
     
     @StateObject private var hide = SideHolder(.secondary)
     @State private var selectedBatchFile: BatchFile?
-    @State private var selectedGeminiModel: GeminiModel = .flash
+    @State private var selectedGeminiModel: GeminiModel? = nil
     @State private var keychainManager: ProjectKeychainManager
     
     init(project: Project) {
