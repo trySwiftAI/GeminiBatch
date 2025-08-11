@@ -1,0 +1,115 @@
+//
+//  BatchJobActor.swift
+//  GeminiBatch
+//
+//  Created by Natasha Murashev on 8/10/25.
+//
+
+@preconcurrency import AIProxy
+import Foundation
+import SwiftData
+
+@ModelActor
+actor BatchJobActor {
+    
+    func fetchBatchJob(id: PersistentIdentifier) -> BatchJob? {
+        return modelContext.model(for: id) as? BatchJob
+    }
+    
+    func updateBatchJobAndFile(id: PersistentIdentifier, from geminiFile: GeminiFile) throws {
+        guard let batchJob = modelContext.model(for: id) as? BatchJob else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        let createdDate: Date
+        if let geminiFileCreateTime = geminiFile.createTime {
+            createdDate = DateFormatter.rfc3339.date(from: geminiFileCreateTime) ?? Date()
+        } else {
+            createdDate = Date()
+        }
+
+        let expirationDate: Date
+        if let geminiFileExpirationTime = geminiFile.expirationTime {
+            expirationDate = DateFormatter.rfc3339.date(from: geminiFileExpirationTime) ?? createdDate.addingTimeInterval(48 * 60 * 60)
+        } else {
+            expirationDate = createdDate.addingTimeInterval(48 * 60 * 60)
+        }
+        
+        batchJob.batchFile.geminiFileURI = geminiFile.uri
+        batchJob.batchFile.geminiFileCreatedAt = createdDate
+        batchJob.batchFile.geminiFileExpirationTime = expirationDate
+        batchJob.batchFile.geminiFileStatus = BatchFileStatus(from: geminiFile.state)
+        batchJob.jobStatus = .fileUploaded
+        
+        try modelContext.save()
+    }
+    
+    func updateBatchJobFromResponse(id: PersistentIdentifier, response: GeminiBatchResponseBody) throws {
+        guard let batchJob = modelContext.model(for: id) as? BatchJob else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        batchJob.geminiJobName = response.name
+        if let responseState = response.state {
+            batchJob.jobStatus = BatchJobStatus(from: responseState)
+        } else {
+            batchJob.jobStatus = .pending
+        }
+        if let batchCreatedTime = response.createTime {
+            batchJob.startedAt = DateFormatter.rfc3339.date(from: batchCreatedTime) ?? Date()
+        } else {
+            batchJob.startedAt = Date()
+        }
+        
+        try modelContext.save()
+    }
+    
+    func updateBatchJobStatus(id: PersistentIdentifier, status: BatchJobStatus) throws {
+        guard let batchJob = modelContext.model(for: id) as? BatchJob else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        batchJob.jobStatus = status
+        try modelContext.save()
+    }
+    
+    func getBatchJobInfo(id: PersistentIdentifier) -> BatchJobInfo? {
+        guard let batchJob = modelContext.model(for: id) as? BatchJob else {
+            return nil
+        }
+        
+        return BatchJobInfo(
+            jobStatus: batchJob.jobStatus,
+            geminiJobName: batchJob.geminiJobName,
+            displayJobName: batchJob.displayJobName,
+            geminiFileURI: batchJob.batchFile.geminiFileURI,
+            isGeminiFileExpired: batchJob.batchFile.isGeminiFileExpired,
+            geminiFileStatus: batchJob.batchFile.geminiFileStatus ?? .unspecified,
+            batchFileStoredURL: batchJob.batchFile.storedURL
+        )
+    }
+    
+    func saveResult(id: PersistentIdentifier, data: Data) async throws {
+        guard let batchJob = modelContext.model(for: id) as? BatchJob else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        let projectID = batchJob.batchFile.project.id.uuidString
+        let fileManager = ProjectFileManager(projectID: projectID)
+        try await fileManager
+            .saveBatchFileResult(
+                resultData: data,
+                batchFile: batchJob.batchFile,
+                inModelContext: modelContext
+            )
+    }
+}
+
+struct BatchJobInfo: Sendable {
+    let jobStatus: BatchJobStatus
+    let geminiJobName: String?
+    let displayJobName: String
+    let geminiFileURI: URL?
+    let isGeminiFileExpired: Bool
+    let geminiFileStatus: BatchFileStatus
+    let batchFileStoredURL: URL
+}

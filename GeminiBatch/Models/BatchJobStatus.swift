@@ -7,7 +7,7 @@
 
 import AIProxy
 
-enum BatchJobStatus: String, CaseIterable, Codable {
+enum BatchJobStatus: String, CaseIterable, Codable, Sendable {
     case notStarted
     case fileUploaded
     case unspecified
@@ -19,7 +19,7 @@ enum BatchJobStatus: String, CaseIterable, Codable {
     case expired
     case jobFileDownloaded
     
-    init(from geminiState: GeminiBatchResponseBody.State) {
+    nonisolated init(from geminiState: GeminiBatchResponseBody.State) {
         switch geminiState {
         case .unspecified:
             self = .unspecified

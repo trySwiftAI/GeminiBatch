@@ -9,24 +9,26 @@
 import Foundation
 import SwiftData
 
-@Observable
-nonisolated class BatchJobManager {
+class BatchJobManager {
     
     private var geminiService: GeminiService
     private var geminiModel: GeminiModel
-    var batchJob: BatchJob
+    private var batchJobID: PersistentIdentifier
+    private var batchJobActor: BatchJobActor
     
     @MainActor
     init(
         geminiAPIKey: String,
         geminiModel: GeminiModel,
-        batchJob: BatchJob
+        batchJobID: PersistentIdentifier,
+        modelContainer: ModelContainer
     ) {
         geminiService = AIProxy.geminiDirectService(
                  unprotectedAPIKey: geminiAPIKey
         )
         self.geminiModel = geminiModel
-        self.batchJob = batchJob
+        self.batchJobID = batchJobID
+        self.batchJobActor = BatchJobActor(modelContainer: modelContainer)
     }
     
     func updateGeminiAPIKey(_ geminiAPIKey: String) {
@@ -39,8 +41,13 @@ nonisolated class BatchJobManager {
         self.geminiModel = geminiModel
     }
     
-    func run() async throws {
-        switch batchJob.jobStatus {
+    nonisolated func run() async throws {
+        let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
+        guard let batchJobInfo else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        switch batchJobInfo.jobStatus {
         case .notStarted, .failed, .cancelled, .expired:
             try await uploadFile()
             try await startBatchJob()
@@ -62,8 +69,13 @@ nonisolated class BatchJobManager {
 
 extension BatchJobManager {
     
-    private func uploadFile() async throws {
-        let fileURL = batchJob.batchFile.storedURL
+    nonisolated private func uploadFile() async throws {
+        let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
+        guard let batchJobInfo else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        let fileURL = batchJobInfo.batchFileStoredURL
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             throw BatchJobError.fileNotStored
         }
@@ -75,112 +87,112 @@ extension BatchJobManager {
         )
         let geminiFileActive: GeminiFile = try await geminiService.pollForFileUploadComplete(fileURL: geminiFile.uri)
         
-        await MainActor.run {
-            updateBatchJobAndFile(from: geminiFileActive)
-        }
+        try await batchJobActor.updateBatchJobAndFile(id: batchJobID, from: geminiFileActive)
     }
     
-    private func updateBatchJobAndFile(from geminiFile: GeminiFile) {
-        let createdDate: Date
-        if let geminiFileCreateTime = geminiFile.createTime {
-            createdDate = DateFormatter.rfc3339.date(from: geminiFileCreateTime) ?? Date()
-        } else {
-            createdDate = Date()
-        }
-
-        let expirationDate: Date
-        if let geminiFileExpirationTime = geminiFile.expirationTime {
-            expirationDate = DateFormatter.rfc3339.date(from: geminiFileExpirationTime) ?? createdDate.addingTimeInterval(48 * 60 * 60)
-        } else {
-            expirationDate = createdDate.addingTimeInterval(48 * 60 * 60)
+    nonisolated private func startBatchJob() async throws {
+        let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
+        guard let batchJobInfo else {
+            throw BatchJobError.batchJobCouldNotBeFetched
         }
         
-        batchJob.batchFile.geminiFileURI = geminiFile.uri
-        batchJob.batchFile.geminiFileCreatedAt = createdDate
-        batchJob.batchFile.geminiFileExpirationTime = expirationDate
-        batchJob.batchFile.geminiFileStatus = BatchFileStatus(from: geminiFile.state)
-        batchJob.jobStatus = .fileUploaded
-    }
-    
-    private func startBatchJob() async throws {
-        if batchJob.batchFile.geminiFileURI == nil || batchJob.batchFile.isGeminiFileExpired || batchJob.batchFile.geminiFileStatus == .failed {
+        if batchJobInfo.geminiFileURI == nil || batchJobInfo.isGeminiFileExpired || batchJobInfo.geminiFileStatus == .failed {
             try await uploadFile()
         }
         
-        guard let geminiFileName = batchJob.batchFile.geminiFileURI else {
+        // Refresh batch job info after potential file upload
+        let updatedBatchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
+        guard let updatedBatchJobInfo else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        guard let geminiFileName = updatedBatchJobInfo.geminiFileURI else {
             throw BatchJobError.fileCouldNotBeUploaded
         }
         
+        let displayName = updatedBatchJobInfo.displayJobName
         let geminiBatchJobBody: GeminiBatchRequestBody = .init(
             fileName: geminiFileName.absoluteString,
-            displayName: batchJob.displayJobName
+            displayName: displayName
         )
         let response: GeminiBatchResponseBody = try await geminiService.createBatchJob(
             body: geminiBatchJobBody,
             model: geminiModel.rawValue
         )
         
-        await MainActor.run {
-            batchJob.geminiJobName = response.name
-            if let responseState = response.state {
-                batchJob.jobStatus = BatchJobStatus(from: responseState)
-            } else {
-                batchJob.jobStatus = .pending
-            }
-            if let batchCreatedTime = response.createTime {
-                batchJob.startedAt = DateFormatter.rfc3339.date(from: batchCreatedTime) ?? Date()
-            } else {
-                batchJob.startedAt = Date()
-            }
-        }
+        try await batchJobActor.updateBatchJobFromResponse(id: batchJobID, response: response)
     }
     
-    private func pollBatchJobStatus() async throws {
-        if batchJob.jobStatus == .succeeded {
+    nonisolated private func pollBatchJobStatus() async throws {
+        let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
+        guard let batchJobInfo else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        if batchJobInfo.jobStatus == .succeeded {
             return
         }
         
-        guard let batchJobName = batchJob.geminiJobName else {
+        guard let batchJobName = batchJobInfo.geminiJobName else {
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
         let response = try await geminiService.pollForBatchJobComplete(batchJobName: batchJobName)
         
-        await MainActor.run {
-            if let responseState = response.state {
-                batchJob.jobStatus = BatchJobStatus(from: responseState)
-            }
+        if let responseState = response.state {
+            let status = BatchJobStatus(from: responseState)
+            try await batchJobActor.updateBatchJobStatus(id: batchJobID, status: status)
         }
     }
     
-    
-    private func getBatchJobStatus() async throws {
-        if batchJob.geminiJobName == nil {
+    nonisolated private func getBatchJobStatus() async throws {
+        let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
+        guard let batchJobInfo else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        if batchJobInfo.geminiJobName == nil {
             try await startBatchJob()
         }
         
-        guard let batchJobName = batchJob.geminiJobName else {
+        // Refresh batch job info after potential job start
+        let updatedBatchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
+        guard let updatedBatchJobInfo else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        guard let batchJobName = updatedBatchJobInfo.geminiJobName else {
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
         let response: GeminiBatchResponseBody = try await geminiService.getBatchJobStatus(batchJobName: batchJobName)
-        await MainActor.run {
-            if let responseState = response.state {
-                batchJob.jobStatus = BatchJobStatus(from: responseState)
-            }
+        if let responseState = response.state {
+            let status = BatchJobStatus(from: responseState)
+            try await batchJobActor.updateBatchJobStatus(id: batchJobID, status: status)
         }
     }
     
-    private func downloadBatchResult() async throws {
-        if batchJob.geminiJobName == nil {
-            try await startBatchJob()
-        }
-        
-        guard let batchJobName = batchJob.geminiJobName else {
+    nonisolated private func downloadBatchResult() async throws {
+        let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
+        guard let batchJobInfo else {
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
-        guard batchJob.jobStatus == .succeeded else {
+        if batchJobInfo.geminiJobName == nil {
+            try await startBatchJob()
+        }
+        
+        // Refresh batch job info after potential job start
+        let updatedBatchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
+        guard let updatedBatchJobInfo else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        guard let batchJobName = updatedBatchJobInfo.geminiJobName else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        guard updatedBatchJobInfo.jobStatus == .succeeded else {
             throw BatchJobError.batchJobNotCompleted
         }
         

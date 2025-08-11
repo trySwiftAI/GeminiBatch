@@ -101,6 +101,73 @@ actor ProjectFileManager {
             throw ProjectFileError.fileRemovalFailed(path: projectDirectory.path)
         }
     }
+    
+    @MainActor
+    func saveBatchFileResult(
+        resultData: Data,
+        batchFile: BatchFile,
+        inModelContext modelContext: ModelContext
+    ) async throws(ProjectFileError) {
+        let destinationURL: URL
+        let batchFileName = batchFile.name
+        
+        do {
+            destinationURL = try await Task.detached {
+                // Create project directory if needed
+                try await self.createProjectDirectoryIfNeeded()
+                
+                let fileName = "result_\(batchFileName).jsonl"
+                let destinationURL = self.projectDirectory.appendingPathComponent(fileName)
+                
+                // Remove existing result file if it exists
+                if FileManager.default.fileExists(atPath: destinationURL.path) {
+                    do {
+                        try FileManager.default.removeItem(at: destinationURL)
+                    } catch {
+                        throw ProjectFileError.fileRemovalFailed(path: destinationURL.path)
+                    }
+                }
+                
+                // Write result data to file
+                do {
+                    try resultData.write(to: destinationURL)
+                } catch let error as CocoaError {
+                    switch error.code {
+                    case .fileWriteNoPermission:
+                        throw ProjectFileError.permissionDenied(
+                            operation: "file write",
+                            path: destinationURL.path
+                        )
+                    default:
+                        throw ProjectFileError.fileCopyFailed(
+                            source: "result data",
+                            destination: destinationURL.path
+                        )
+                    }
+                } catch {
+                    throw ProjectFileError.fileCopyFailed(
+                        source: "result data",
+                        destination: destinationURL.path
+                    )
+                }
+                
+                return destinationURL
+            }.value
+        } catch let error as ProjectFileError {
+            throw error
+        } catch {
+            throw ProjectFileError.fileCopyFailed(source: "result data", destination: projectDirectory.path)
+        }
+        
+        do {
+            try await MainActor.run {
+                batchFile.resultPath = destinationURL.path
+                try modelContext.save()
+            }
+        } catch {
+            throw ProjectFileError.modelContextSaveFailed(reason: error.localizedDescription)
+        }
+    }
 }
 
 // MARK: - Private Extensions
