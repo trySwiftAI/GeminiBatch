@@ -68,22 +68,28 @@ extension BatchJobManager {
     
     nonisolated private func uploadFile() async throws {
         let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
-        
         guard let batchJobInfo else {
-            let errorMessage = "Failed to fetch batch job information. Please retry the operation."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "Failed to fetch batch job information. Please retry the operation.",
+                type: .error
+            )
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
-        try await batchJobActor.updateBatchJobStatusMessage(
+        try await batchJobActor.addBatchJobMessage(
             id: batchJobID,
-            statusMessage: "Uploading file \(batchJobInfo.batchFileName) to Gemini..."
+            message: "Uploading file \(batchJobInfo.batchFileName) to Gemini...",
+            type: .pending
         )
         
         let fileURL = batchJobInfo.batchFileStoredURL
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            let errorMessage = "File not found locally. Please ensure the file is properly stored and retry."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "File not found locally. Please ensure the file is properly stored and retry.",
+                type: .error
+            )
             throw BatchJobError.fileNotStored
         }
         
@@ -95,9 +101,10 @@ extension BatchJobManager {
                 mimeType: "application/jsonl"
             )
             
-            try await batchJobActor.updateBatchJobStatusMessage(
+            try await batchJobActor.addBatchJobMessage(
                 id: batchJobID,
-                statusMessage: "File uploaded successfully. Waiting for Gemini to process..."
+                message: "File uploaded successfully. Waiting for Gemini to process...",
+                type: .pending
             )
             
             let geminiFileActive: GeminiFile = try await geminiService.pollForFileUploadComplete(fileURL: geminiFile.uri)
@@ -105,48 +112,64 @@ extension BatchJobManager {
             try await batchJobActor.updateBatchJobAndFile(id: batchJobID, from: geminiFileActive)
             
             let fileName = geminiFileActive.uri.lastPathComponent
-            try await batchJobActor.updateBatchJobStatusMessage(
+            try await batchJobActor.addBatchJobMessage(
                 id: batchJobID,
-                statusMessage: "File uploaded and processed successfully. Gemini File Name: \(fileName)"
+                message: "File uploaded and processed successfully. Gemini File Name: \(fileName)",
+                type: .success
             )
         } catch {
-            let errorMessage = "Failed to upload file to Gemini: \(error.localizedDescription). Please check your connection and retry."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "Failed to upload file to Gemini: \(error.localizedDescription). Please check your connection and retry.",
+                type: .error
+            )
             throw error
         }
     }
     
     nonisolated private func startBatchJob() async throws {
-        try await batchJobActor.updateBatchJobStatusMessage(
+        // Add "before" message
+        try await batchJobActor.addBatchJobMessage(
             id: batchJobID,
-            statusMessage: "Starting batch job with Gemini..."
+            message: "Starting batch job with Gemini...",
+            type: .pending
         )
         
         let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
         guard let batchJobInfo else {
-            let errorMessage = "Failed to fetch batch job information. Please retry the operation."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "Failed to fetch batch job information. Please retry the operation.",
+                type: .error
+            )
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
         if batchJobInfo.geminiFileURI == nil || batchJobInfo.isGeminiFileExpired || batchJobInfo.geminiFileStatus == .failed {
-            try await batchJobActor.updateBatchJobStatusMessage(
+            try await batchJobActor.addBatchJobMessage(
                 id: batchJobID,
-                statusMessage: "File needs to be re-uploaded before starting batch job..."
+                message: "File needs to be re-uploaded before starting batch job...",
+                type: .pending
             )
             try await uploadFile()
         }
         
         let updatedBatchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
         guard let updatedBatchJobInfo else {
-            let errorMessage = "Failed to fetch updated batch job information. Please retry the operation."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "Failed to fetch updated batch job information. Please retry the operation.",
+                type: .error
+            )
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
         guard let geminiFileName = updatedBatchJobInfo.geminiFileURI else {
-            let errorMessage = "File upload failed - no Gemini file URI available. Please retry the upload."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "File upload failed - no Gemini file URI available. Please retry the upload.",
+                type: .error
+            )
             throw BatchJobError.fileCouldNotBeUploaded
         }
         
@@ -163,13 +186,18 @@ extension BatchJobManager {
             
             try await batchJobActor.updateBatchJobFromResponse(id: batchJobID, response: response)
             
-            try await batchJobActor.updateBatchJobStatusMessage(
+            try await batchJobActor.addBatchJobMessage(
                 id: batchJobID,
-                statusMessage: "Batch job started successfully. Job Name: \(response.name). Status: \(response.state?.rawValue ?? "pending")"
+                message: "Batch job started successfully. Job Name: \(response.name). Status: \(response.state?.rawValue ?? "pending")",
+                type: .success
             )
+            
         } catch {
-            let errorMessage = "Failed to start batch job: \(error.localizedDescription). Please check your API key and retry."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "Failed to start batch job: \(error.localizedDescription). Please check your API key and retry.",
+                type: .error
+            )
             throw error
         }
     }
@@ -177,8 +205,11 @@ extension BatchJobManager {
     nonisolated private func pollBatchJobStatus() async throws {
         let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
         guard let batchJobInfo else {
-            let errorMessage = "Failed to fetch batch job information during status check. Please retry."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "Failed to fetch batch job information during status check. Please retry.",
+                type: .error
+            )
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
@@ -187,14 +218,18 @@ extension BatchJobManager {
         }
         
         guard let batchJobName = batchJobInfo.geminiJobName else {
-            let errorMessage = "No batch job name available for status polling. Please restart the batch job."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "No batch job name available for status polling. Please restart the batch job.",
+                type: .error
+            )
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
-        try await batchJobActor.updateBatchJobStatusMessage(
+        try await batchJobActor.addBatchJobMessage(
             id: batchJobID,
-            statusMessage: "Checking batch job status..."
+            message: "Checking batch job status...",
+            type: .pending
         )
         
         do {
@@ -204,88 +239,115 @@ extension BatchJobManager {
                 let status = BatchJobStatus(from: responseState)
                 try await batchJobActor.updateBatchJobStatus(id: batchJobID, status: status)
                 
+                // Add status update message
                 switch status {
                 case .pending:
-                    try await batchJobActor.updateBatchJobStatusMessage(
+                    try await batchJobActor.addBatchJobMessage(
                         id: batchJobID,
-                        statusMessage: "Batch job is pending - waiting to be processed by Gemini..."
+                        message: "Batch job is pending - waiting to be processed by Gemini...",
+                        type: .pending
                     )
                 case .running:
-                    try await batchJobActor.updateBatchJobStatusMessage(
+                    try await batchJobActor.addBatchJobMessage(
                         id: batchJobID,
-                        statusMessage: "Batch job is running - Gemini is processing your requests..."
+                        message: "Batch job is running - Gemini is processing your requests...",
+                        type: .pending
                     )
                 case .succeeded:
-                    try await batchJobActor.updateBatchJobStatusMessage(
+                    try await batchJobActor.addBatchJobMessage(
                         id: batchJobID,
-                        statusMessage: "Batch job completed successfully! Ready to download results."
+                        message: "Batch job completed successfully! Ready to download results.",
+                        type: .success
                     )
                 case .failed:
-                    try await batchJobActor.updateBatchJobStatusMessage(
+                    try await batchJobActor.addBatchJobMessage(
                         id: batchJobID,
-                        statusMessage: "Batch job failed. Please check your input file format and retry with a new job."
+                        message: "Batch job failed. Please check your input file format and retry with a new job.",
+                        type: .error
                     )
                 case .cancelled:
-                    try await batchJobActor.updateBatchJobStatusMessage(
+                    try await batchJobActor.addBatchJobMessage(
                         id: batchJobID,
-                        statusMessage: "Batch job was cancelled. You can retry with a new job if needed."
+                        message: "Batch job was cancelled. You can retry with a new job if needed.",
+                        type: .error
                     )
                 case .expired:
-                    try await batchJobActor.updateBatchJobStatusMessage(
+                    try await batchJobActor.addBatchJobMessage(
                         id: batchJobID,
-                        statusMessage: "Batch job expired after 48 hours. Please create a new job to retry."
+                        message: "Batch job expired after 48 hours. Please create a new job to retry.",
+                        type: .error
                     )
                 default:
-                    try await batchJobActor.updateBatchJobStatusMessage(
+                    try await batchJobActor.addBatchJobMessage(
                         id: batchJobID,
-                        statusMessage: "Batch job status: \(responseState)"
+                        message: "Batch job status: \(responseState)",
+                        type: .pending
                     )
                 }
             }
         } catch {
-            let errorMessage = "Failed to check batch job status: \(error.localizedDescription). Will retry automatically."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "Failed to check batch job status: \(error.localizedDescription). Will retry automatically.",
+                type: .error
+            )
             throw error
         }
     }
 
     nonisolated private func downloadBatchResult() async throws {
-        try await batchJobActor.updateBatchJobStatusMessage(
+        // Add "before" message
+        try await batchJobActor.addBatchJobMessage(
             id: batchJobID,
-            statusMessage: "Downloading batch job results..."
+            message: "Downloading batch job results...",
+            type: .pending
         )
         
         let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
         guard let batchJobInfo else {
-            let errorMessage = "Failed to fetch batch job information for download. Please retry."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "Failed to fetch batch job information for download. Please retry.",
+                type: .error
+            )
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
         if batchJobInfo.geminiJobName == nil {
-            try await batchJobActor.updateBatchJobStatusMessage(
+            try await batchJobActor.addBatchJobMessage(
                 id: batchJobID,
-                statusMessage: "No job name available, attempting to start batch job first..."
+                message: "No job name available, attempting to start batch job first...",
+                type: .pending
             )
             try await startBatchJob()
         }
         
+        // Refresh batch job info after potential job start
         let updatedBatchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
         guard let updatedBatchJobInfo else {
-            let errorMessage = "Failed to fetch updated batch job information for download. Please retry."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "Failed to fetch updated batch job information for download. Please retry.",
+                type: .error
+            )
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
         guard let batchJobName = updatedBatchJobInfo.geminiJobName else {
-            let errorMessage = "No batch job name available for download. Please restart the batch job."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "No batch job name available for download. Please restart the batch job.",
+                type: .error
+            )
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
         guard updatedBatchJobInfo.jobStatus == .succeeded else {
-            let errorMessage = "Batch job has not succeeded yet (current status: \(updatedBatchJobInfo.jobStatus)). Cannot download results until job completes successfully."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "Batch job has not succeeded yet (current status: \(updatedBatchJobInfo.jobStatus)). Cannot download results until job completes successfully.",
+                type: .error
+            )
             throw BatchJobError.batchJobNotCompleted
         }
         
@@ -293,14 +355,19 @@ extension BatchJobManager {
             let batchResultsData = try await geminiService.downloadBatchResults(responsesFileName: batchJobName)
             try await batchJobActor.saveResult(id: batchJobID, data: batchResultsData)
             
+            // Add "after" success message
             let resultSize = ByteCountFormatter.string(fromByteCount: Int64(batchResultsData.count), countStyle: .file)
-            try await batchJobActor.updateBatchJobStatusMessage(
+            try await batchJobActor.addBatchJobMessage(
                 id: batchJobID,
-                statusMessage: "Results downloaded successfully! File size: \(resultSize). Batch job complete."
+                message: "Results downloaded successfully! File size: \(resultSize). Batch job complete.",
+                type: .success
             )
         } catch {
-            let errorMessage = "Failed to download batch results: \(error.localizedDescription). Please check your connection and retry."
-            try await batchJobActor.updateBatchJobStatusMessage(id: batchJobID, statusMessage: errorMessage)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "Failed to download batch results: \(error.localizedDescription). Please check your connection and retry.",
+                type: .error
+            )
             throw error
         }
     }

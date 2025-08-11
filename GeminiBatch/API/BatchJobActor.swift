@@ -73,12 +73,21 @@ actor BatchJobActor {
         try modelContext.save()
     }
     
-    func updateBatchJobStatusMessage(id: PersistentIdentifier, statusMessage: String) throws {
+    func updateBatchJobStatusMessage(id: PersistentIdentifier, statusMessage: String, type: BatchJobMessageType) throws {
         guard let batchJob = modelContext.model(for: id) as? BatchJob else {
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
-        batchJob.jobStatusMessages.append(statusMessage)
+        batchJob.addMessage(statusMessage, type: type)
+        try modelContext.save()
+    }
+    
+    func addBatchJobMessage(id: PersistentIdentifier, message: String, type: BatchJobMessageType) throws {
+        guard let batchJob = modelContext.model(for: id) as? BatchJob else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        batchJob.addMessage(message, type: type)
         try modelContext.save()
     }
     

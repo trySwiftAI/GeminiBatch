@@ -14,7 +14,9 @@ final class BatchJob {
     var displayJobName: String
     var startedAt: Date? = nil
     var jobStatus: BatchJobStatus
-    var jobStatusMessages: [String] = []
+    
+    @Relationship(deleteRule: .cascade)
+    var jobStatusMessages: [BatchJobMessage] = []
     
     var batchFile: BatchFile
     
@@ -26,6 +28,16 @@ final class BatchJob {
 }
 
 extension BatchJob {
+    
+    var latestMessage: BatchJobMessage? {
+        return jobStatusMessages.last
+    }
+    
+    func addMessage(_ message: String, type: BatchJobMessageType) {
+        let batchJobMessage = BatchJobMessage(message: message, type: type)
+        batchJobMessage.batchJob = self
+        jobStatusMessages.append(batchJobMessage)
+    }
     
     var expirationTimeRemaining: String? {
         guard let startedAt = startedAt,
@@ -49,5 +61,4 @@ extension BatchJob {
             return "Expires in \(minutes) minutes"
         }
     }
-    
 }

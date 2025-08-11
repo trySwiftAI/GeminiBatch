@@ -21,7 +21,7 @@ struct ProjectDetailSplitView: View {
                     .environmentObject(hide)
             },
             secondary: {
-                Text("Running")
+                RunView()
             }
         )
         .splitter { Splitter.line() }
