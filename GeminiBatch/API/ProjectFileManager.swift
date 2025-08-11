@@ -26,14 +26,14 @@ actor ProjectFileManager {
         )
     }
         
-    func processBatchFiles(
+    nonisolated func processBatchFiles(
         fromURLs urls: [URL],
         fromFileImporter fileImporter: Bool
     ) async throws -> [BatchFileData] {
         return try await processFileURLs(urls, fromFileImporter: fileImporter)
     }
     
-    func deleteBatchFile(
+    nonisolated func deleteBatchFile(
         fileId: PersistentIdentifier,
         using batchFileActor: BatchFileModelActor
     ) async throws(ProjectFileError) {
@@ -79,7 +79,7 @@ actor ProjectFileManager {
         }
     }
     
-    func deleteProjectDirectory() async throws(ProjectFileError) {
+    nonisolated func deleteProjectDirectory() async throws(ProjectFileError) {
         do {
             try await Task.detached {
                 if FileManager.default.fileExists(atPath: self.projectDirectory.path) {
@@ -107,7 +107,7 @@ actor ProjectFileManager {
         }
     }
     
-    func saveBatchFileResult(
+    nonisolated func saveBatchFileResult(
         resultData: Data,
         batchFileId: PersistentIdentifier,
         using batchFileActor: BatchFileModelActor
@@ -123,7 +123,7 @@ actor ProjectFileManager {
         do {
             destinationURL = try await Task.detached {
                 // Create project directory if needed
-                try await self.createProjectDirectoryIfNeeded()
+                try self.createProjectDirectoryIfNeeded()
                 
                 let fileName = "result_\(batchFileName).jsonl"
                 let destinationURL = self.projectDirectory.appendingPathComponent(fileName)
@@ -191,7 +191,7 @@ extension ProjectFileManager {
         var fileSize: Int64
     }
     
-    private func processFileURLs(
+    nonisolated private func processFileURLs(
         _ urls: [URL],
         fromFileImporter: Bool = false
     ) async throws(ProjectFileError) -> [BatchFileData] {
@@ -201,7 +201,7 @@ extension ProjectFileManager {
                 var processedBatchFilesData: [BatchFileData] = []
                 
                 // Create project directory first
-                try await self.createProjectDirectoryIfNeeded()
+                try self.createProjectDirectoryIfNeeded()
                 
                 for url in urls {
                     // Check security access for file importer URLs
@@ -292,7 +292,7 @@ extension ProjectFileManager {
         }
     }
     
-    private func createProjectDirectoryIfNeeded() throws(ProjectFileError) {
+    nonisolated private func createProjectDirectoryIfNeeded() throws(ProjectFileError) {
         if FileManager.default.fileExists(atPath: self.projectDirectory.path) {
             return
         }
@@ -306,7 +306,7 @@ extension ProjectFileManager {
         }
     }
     
-    private func createProjectsDirectoryIfNeeded() throws(ProjectFileError) {
+    nonisolated private func createProjectsDirectoryIfNeeded() throws(ProjectFileError) {
         guard !FileManager.default.fileExists(atPath: self.projectsDirectory.path) else {
             return
         }

@@ -16,7 +16,6 @@ class BatchJobManager {
     private var batchJobID: PersistentIdentifier
     private var batchJobActor: BatchJobActor
     
-    @MainActor
     init(
         geminiAPIKey: String,
         geminiModel: GeminiModel,
