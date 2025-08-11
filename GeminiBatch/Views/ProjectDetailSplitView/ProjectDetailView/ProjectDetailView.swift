@@ -14,6 +14,7 @@ struct ProjectDetailView: View {
     @Binding var selectedBatchFile: BatchFile?
     @Binding var selectedGeminiModel: GeminiModel?
     @Binding var keychainManager: ProjectKeychainManager
+    @Binding var runningBatchJob: BatchJob?
     
     @State private var isAPIKeyVisible: Bool = false
     @FocusState private var isAPIKeyFocused
@@ -120,7 +121,7 @@ extension ProjectDetailView {
     
     @ViewBuilder
     private var modelSelectionPicker: some View {
-        Picker("Gemini Model", selection: $selectedGeminiModel) {
+        Picker("Gemini Model (required):", selection: $selectedGeminiModel) {
             ForEach(GeminiModel.allPredefinedCases, id: \.self) { model in
                 Text(model.displayName)
                     .tag(model)
@@ -143,7 +144,13 @@ extension ProjectDetailView {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     ForEach(files) { file in
-                        FileRowView(file: file, selectedBatchFile: $selectedBatchFile)
+                        FileRowView(
+                            file: file, 
+                            selectedBatchFile: $selectedBatchFile,
+                            selectedGeminiModel: $selectedGeminiModel,
+                            keychainManager: $keychainManager,
+                            runningBatchJob: $runningBatchJob
+                        )
                     }
                 }
                 .padding(.vertical, 8)

@@ -16,6 +16,7 @@ struct ProjectDetailSplitView: View {
     @State private var selectedBatchFile: BatchFile?
     @State private var selectedGeminiModel: GeminiModel? = nil
     @State private var keychainManager: ProjectKeychainManager
+    @State private var runningBatchJob: BatchJob?
     
     init(project: Project) {
         self.project = project
@@ -29,7 +30,8 @@ struct ProjectDetailSplitView: View {
                     project: project, 
                     selectedBatchFile: $selectedBatchFile,
                     selectedGeminiModel: $selectedGeminiModel,
-                    keychainManager: $keychainManager
+                    keychainManager: $keychainManager,
+                    runningBatchJob: $runningBatchJob
                 )
                 .environmentObject(hide)
             },

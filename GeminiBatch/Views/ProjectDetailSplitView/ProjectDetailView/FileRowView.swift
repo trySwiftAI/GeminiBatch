@@ -17,6 +17,9 @@ struct FileRowView: View {
 
     let file: BatchFile
     @Binding var selectedBatchFile: BatchFile?
+    @Binding var selectedGeminiModel: GeminiModel?
+    @Binding var keychainManager: ProjectKeychainManager
+    @Binding var runningBatchJob: BatchJob?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -41,10 +44,30 @@ extension FileRowView {
     @ViewBuilder
     private var runFileButton: some View {
         Button {
-            selectedBatchFile = file
-            withAnimation {
-                hide.side = nil
+            if let geminiModel = selectedGeminiModel {
+                selectedBatchFile = file
+                let batchJobManager = BatchJobManager(
+                    geminiAPIKey: keychainManager.geminiAPIKey,
+                    geminiModel: geminiModel,
+                    batchJobID: file.batchJob.id,
+                    modelContainer: modelContext.container
+                )
+                Task {
+                    do {
+                        try await batchJobManager.run()
+                    } catch {
+                        toastPresenter.showErrorToast(withMessage: error.localizedDescription)
+                    }
+                }
+                runningBatchJob = file.batchJob
+                withAnimation {
+                    hide.side = nil
+                }
+            } else {
+                toastPresenter.showErrorToast(withMessage: "Oops! The Gemini Model has not been selected. Please select it and try again.")
             }
+            
+
         } label: {
             Image(systemName: "play")
                 .padding(8)
@@ -55,6 +78,7 @@ extension FileRowView {
         .tint(.orange.opacity(colorScheme == .dark ? 0.5 : 0.8))
         .help("Run file")
         .scaleEffect(1.2)
+        .disabled(keychainManager.geminiAPIKey.isEmpty || selectedGeminiModel == nil)
     }
 }
 
@@ -68,7 +92,13 @@ extension FileRowView {
         project: project
     )
     
-    return FileRowView(file: file, selectedBatchFile: .constant(nil))
+    return FileRowView(
+        file: file, 
+        selectedBatchFile: .constant(nil),
+        selectedGeminiModel: .constant(nil),
+        keychainManager: .constant(ProjectKeychainManager(project: project)),
+        runningBatchJob: .constant(nil)
+    )
         .environment(ToastPresenter())
         .modelContainer(
             for: [Project.self, BatchFile.self],
