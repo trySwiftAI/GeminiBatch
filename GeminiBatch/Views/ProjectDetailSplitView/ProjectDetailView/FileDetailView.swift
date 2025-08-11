@@ -89,8 +89,7 @@ extension FileDetailView {
     private func deleteFile(_ file: BatchFile) async {
         do {
             try await ProjectFileManager(
-                projectID: file.project.id.uuidString)
-            .deleteBatchFile(file, inModelContext: modelContext)
+                projectID: file.project.id.uuidString).deleteBatchFile(fileId: file.id, using: .init(modelContainer: modelContext.container))
         } catch {
             let errorMessage = "Failed to delete file: \(error.localizedDescription)"
             toastPresenter.showErrorToast(withMessage: errorMessage)

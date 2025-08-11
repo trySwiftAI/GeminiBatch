@@ -33,42 +33,47 @@ actor ProjectFileManager {
         return try await processFileURLs(urls, fromFileImporter: fileImporter)
     }
     
-    @MainActor
     func deleteBatchFile(
-        _ file: BatchFile,
-        inModelContext modelContext: ModelContext
+        fileId: PersistentIdentifier,
+        using batchFileActor: BatchFileModelActor
     ) async throws(ProjectFileError) {
+        // Get batch file info first to get the stored URL
+        guard let batchFileInfo = await batchFileActor.getBatchFileInfo(id: fileId) else {
+            throw ProjectFileError.fileNotFound(path: "batch file with id: \(fileId)")
+        }
+        
         do {
             try await Task {
-                if FileManager.default.fileExists(atPath: file.storedURL.path) {
+                if FileManager.default.fileExists(atPath: batchFileInfo.storedURL.path) {
                     do {
-                        try FileManager.default.removeItem(at: file.storedURL)
+                        try FileManager.default.removeItem(at: batchFileInfo.storedURL)
                     } catch let error as CocoaError {
                         switch error.code {
                         case .fileReadNoPermission, .fileWriteNoPermission:
                             throw ProjectFileError.permissionDenied(
                                 operation: "file deletion",
-                                path: file.storedURL.path
+                                path: batchFileInfo.storedURL.path
                             )
                         default:
-                            throw ProjectFileError.fileRemovalFailed(path: file.storedURL.path)
+                            throw ProjectFileError.fileRemovalFailed(path: batchFileInfo.storedURL.path)
                         }
                     } catch {
-                        throw ProjectFileError.fileRemovalFailed(path: file.storedURL.path)
+                        throw ProjectFileError.fileRemovalFailed(path: batchFileInfo.storedURL.path)
                     }
                 }
             }.value
         } catch let error as ProjectFileError {
             throw error
         } catch {
-            throw ProjectFileError.fileRemovalFailed(path: file.storedURL.path)
+            throw ProjectFileError.fileRemovalFailed(path: batchFileInfo.storedURL.path)
         }
         
         do {
-            try await MainActor.run {
-                modelContext.delete(file)
-                try modelContext.save()
-            }
+            try await batchFileActor.deleteBatchFile(id: fileId)
+        } catch BatchFileModelActorError.batchFileNotFound {
+            throw ProjectFileError.fileNotFound(path: batchFileInfo.storedURL.path)
+        } catch BatchFileModelActorError.modelContextSaveFailed(let reason) {
+            throw ProjectFileError.modelContextSaveFailed(reason: reason)
         } catch {
             throw ProjectFileError.modelContextSaveFailed(reason: error.localizedDescription)
         }
@@ -102,14 +107,18 @@ actor ProjectFileManager {
         }
     }
     
-    @MainActor
     func saveBatchFileResult(
         resultData: Data,
-        batchFile: BatchFile,
-        inModelContext modelContext: ModelContext
+        batchFileId: PersistentIdentifier,
+        using batchFileActor: BatchFileModelActor
     ) async throws(ProjectFileError) {
+        // Get batch file info first
+        guard let batchFileInfo = await batchFileActor.getBatchFileInfo(id: batchFileId) else {
+            throw ProjectFileError.fileNotFound(path: "batch file with id: \(batchFileId)")
+        }
+        
         let destinationURL: URL
-        let batchFileName = batchFile.name
+        let batchFileName = batchFileInfo.name
         
         do {
             destinationURL = try await Task.detached {
@@ -160,10 +169,11 @@ actor ProjectFileManager {
         }
         
         do {
-            try await MainActor.run {
-                batchFile.resultPath = destinationURL.path
-                try modelContext.save()
-            }
+            try await batchFileActor.updateResultPath(id: batchFileId, resultPath: destinationURL.path)
+        } catch BatchFileModelActorError.batchFileNotFound {
+            throw ProjectFileError.fileNotFound(path: "batch file with id: \(batchFileId)")
+        } catch BatchFileModelActorError.modelContextSaveFailed(let reason) {
+            throw ProjectFileError.modelContextSaveFailed(reason: reason)
         } catch {
             throw ProjectFileError.modelContextSaveFailed(reason: error.localizedDescription)
         }

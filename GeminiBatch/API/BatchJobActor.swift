@@ -98,8 +98,10 @@ actor BatchJobActor {
         try await fileManager
             .saveBatchFileResult(
                 resultData: data,
-                batchFile: batchJob.batchFile,
-                inModelContext: modelContext
+                batchFileId: batchJob.batchFile.id,
+                using: .init(
+                    modelContainer: modelContainer
+                )
             )
     }
 }
