@@ -79,7 +79,6 @@ extension FileRowView {
                         } catch {
                             toastPresenter.showErrorToast(withMessage: error.localizedDescription)
                             isRunning = false
-                            runningBatchJob = nil
                         }
                     }
                 }
@@ -103,7 +102,9 @@ extension FileRowView {
 extension FileRowView {
     private func setupBatchJobIfNeeded() {
         if file.batchJob == nil {
-            file.batchJob = BatchJob(batchFile: file)
+            let batchJob = BatchJob(batchFile: file)
+            modelContext.insert(batchJob)
+            file.batchJob = batchJob
             try? modelContext.save()
         }
     }

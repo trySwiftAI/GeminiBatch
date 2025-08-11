@@ -128,7 +128,6 @@ extension BatchJobManager {
     }
     
     nonisolated private func startBatchJob() async throws {
-        // Add "before" message
         try await batchJobActor.addBatchJobMessage(
             id: batchJobID,
             message: "Starting batch job with Gemini...",

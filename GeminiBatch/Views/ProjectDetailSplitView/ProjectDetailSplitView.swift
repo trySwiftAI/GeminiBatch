@@ -36,12 +36,7 @@ struct ProjectDetailSplitView: View {
                 .environmentObject(hide)
             },
             secondary: {
-                Text("Running")
-//                RunView(
-//                    project: project, 
-//                    selectedBatchFile: $selectedBatchFile, 
-//                    selectedGeminiModel: $selectedGeminiModel
-//                )
+                RunView(runningBatchJob: $runningBatchJob)
             }
         )
         .splitter { Splitter.line() }
