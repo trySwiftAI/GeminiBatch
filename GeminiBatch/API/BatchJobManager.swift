@@ -51,16 +51,21 @@ class BatchJobManager {
             try await uploadFile()
             try await startBatchJob()
             try await pollBatchJobStatus()
+            try await downloadBatchResult()
         case .fileUploaded:
             try await startBatchJob()
             try await pollBatchJobStatus()
+            try await downloadBatchResult()
         case .pending, .running:
             try await pollBatchJobStatus()
+            try await downloadBatchResult()
         case .succeeded:
             try await pollBatchJobStatus()
-        case .jobFileDownloaded:
-            return
+            try await downloadBatchResult()
         case .unspecified:
+            try await pollBatchJobStatus()
+            try await downloadBatchResult()
+        case .jobFileDownloaded:
             return
         }
     }
