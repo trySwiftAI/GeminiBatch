@@ -21,7 +21,7 @@ final class BatchFile {
     var project: Project
     
     @Relationship(deleteRule: .cascade, inverse: \BatchJob.batchFile)
-    var batchJob: BatchJob
+    var batchJob: BatchJob?
     var geminiFileURI: URL? = nil
     var geminiFileStatus: BatchFileStatus? = nil
     var geminiFileCreatedAt: Date? = nil

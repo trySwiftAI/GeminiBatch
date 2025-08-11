@@ -39,6 +39,15 @@ extension BatchJob {
         jobStatusMessages.append(batchJobMessage)
     }
     
+    var isExpired: Bool {
+        guard let startedAt = startedAt else {
+            return false
+        }
+        
+        let expirationDate = startedAt.addingTimeInterval(48 * 60 * 60)
+        return Date() > expirationDate
+    }
+    
     var expirationTimeRemaining: String? {
         guard let startedAt = startedAt,
               jobStatus == .pending || jobStatus == .running else {
