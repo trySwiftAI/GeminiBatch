@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum GeminiModel: Hashable, Identifiable, CaseIterable {
+enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable {
     case flashLite
     case flash
     case pro

@@ -7,7 +7,7 @@
 
 import AIProxy
 
-enum BatchFileStatus: String, CaseIterable, Codable {
+nonisolated enum BatchFileStatus: String, CaseIterable, Codable {
     case unspecified
     case processing
     case active

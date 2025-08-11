@@ -5,17 +5,18 @@
 //  Created by Natasha Murashev on 8/10/25.
 //
 
-import AIProxy
+@preconcurrency import AIProxy
 import Foundation
 import SwiftData
 
 @Observable
-class BatchJobManager {
+nonisolated class BatchJobManager {
     
     private var geminiService: GeminiService
     private var geminiModel: GeminiModel
     var batchJob: BatchJob
     
+    @MainActor
     init(
         geminiAPIKey: String,
         geminiModel: GeminiModel,
