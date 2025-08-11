@@ -41,32 +41,25 @@ class BatchJobManager {
     }
     
     nonisolated func run() async throws {
-        let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
-        guard let batchJobInfo else {
-            throw BatchJobError.batchJobCouldNotBeFetched
-        }
-        
-        switch batchJobInfo.jobStatus {
-        case .notStarted, .failed, .cancelled, .expired:
-            try await uploadFile()
-            try await startBatchJob()
-            try await pollBatchJobStatus()
-            try await downloadBatchResult()
-        case .fileUploaded:
-            try await startBatchJob()
-            try await pollBatchJobStatus()
-            try await downloadBatchResult()
-        case .pending, .running:
-            try await pollBatchJobStatus()
-            try await downloadBatchResult()
-        case .succeeded:
-            try await pollBatchJobStatus()
-            try await downloadBatchResult()
-        case .unspecified:
-            try await pollBatchJobStatus()
-            try await downloadBatchResult()
-        case .jobFileDownloaded:
-            return
+        while true {
+            let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
+            guard let batchJobInfo else {
+                throw BatchJobError.batchJobCouldNotBeFetched
+            }
+            
+            switch batchJobInfo.jobStatus {
+            case .notStarted, .failed, .cancelled, .expired:
+                try await uploadFile()
+            case .fileUploaded:
+                try await startBatchJob()
+            case .pending, .running, .unspecified:
+                try await pollBatchJobStatus()
+            case .succeeded:
+                try await downloadBatchResult()
+                return
+            case .jobFileDownloaded:
+                return
+            }
         }
     }
 }
