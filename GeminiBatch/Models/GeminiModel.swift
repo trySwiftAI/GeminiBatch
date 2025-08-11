@@ -46,7 +46,7 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
     }
     
     static var allPredefinedCases: [GeminiModel] {
-        return [.flashLite, .flash, .pro, .flash2Lite, .flash2]
+        return [.pro, .flash, .flashLite, .flash2, .flash2Lite]
     }
     
     var displayName: String {

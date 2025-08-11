@@ -16,6 +16,7 @@ struct FileRowView: View {
     @EnvironmentObject private var hide: SideHolder
 
     let file: BatchFile
+    @Binding var selectedBatchFile: BatchFile?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -34,13 +35,13 @@ struct FileRowView: View {
     }
 }
 
-
 // MARK: Action Buttons
 extension FileRowView {
     
     @ViewBuilder
     private var runFileButton: some View {
         Button {
+            selectedBatchFile = file
             withAnimation {
                 hide.side = nil
             }
@@ -67,7 +68,7 @@ extension FileRowView {
         project: project
     )
     
-    return FileRowView(file: file)
+    return FileRowView(file: file, selectedBatchFile: .constant(nil))
         .environment(ToastPresenter())
         .modelContainer(
             for: [Project.self, BatchFile.self],

@@ -13,15 +13,26 @@ struct ProjectDetailSplitView: View {
     let project: Project
     
     @StateObject private var hide = SideHolder(.secondary)
+    @State private var selectedBatchFile: BatchFile?
+    @State private var selectedGeminiModel: GeminiModel = .flash
     
     var body: some View {
         Split(
             primary: {
-                ProjectDetailView(project: project)
-                    .environmentObject(hide)
+                ProjectDetailView(
+                    project: project, 
+                    selectedBatchFile: $selectedBatchFile,
+                    selectedGeminiModel: $selectedGeminiModel
+                )
+                .environmentObject(hide)
             },
             secondary: {
-                RunView()
+                Text("Running")
+//                RunView(
+//                    project: project, 
+//                    selectedBatchFile: $selectedBatchFile, 
+//                    selectedGeminiModel: $selectedGeminiModel
+//                )
             }
         )
         .splitter { Splitter.line() }
@@ -55,5 +66,3 @@ extension ProjectDetailSplitView {
         )
     }
 }
-
-

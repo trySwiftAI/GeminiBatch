@@ -11,13 +11,17 @@ struct ProjectDetailView: View {
     @Environment(ToastPresenter.self) private var toastPresenter
     
     let project: Project
+    @Binding var selectedBatchFile: BatchFile?
+    @Binding var selectedGeminiModel: GeminiModel
     
     @State private var keychainManager: ProjectKeychainManager
     @State private var isAPIKeyVisible: Bool = false
     @FocusState private var isAPIKeyFocused
     
-    init(project: Project) {
+    init(project: Project, selectedBatchFile: Binding<BatchFile?>, selectedGeminiModel: Binding<GeminiModel>) {
         self.project = project
+        self._selectedBatchFile = selectedBatchFile
+        self._selectedGeminiModel = selectedGeminiModel
         self._keychainManager = State(initialValue: ProjectKeychainManager(project: project))
     }
         
@@ -28,6 +32,7 @@ struct ProjectDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     apiKeySection
+                    modelSelectionSection
                     if !project.batchFiles.isEmpty {
                         fileListView(project.batchFiles)
                     }
@@ -124,6 +129,22 @@ extension ProjectDetailView {
     }
     
     @ViewBuilder
+    private var modelSelectionSection: some View {
+        HStack {
+            Picker("Gemini Model", selection: $selectedGeminiModel) {
+                ForEach(GeminiModel.allPredefinedCases, id: \.self) { model in
+                    Text(model.displayName)
+                        .tag(model)
+                }
+            }
+            .pickerStyle(.menu)
+            .frame(maxWidth: 300)
+            
+            Spacer()
+        }
+    }
+    
+    @ViewBuilder
     private func fileListView(_ files: [BatchFile]) -> some View {
         VStack(alignment: .leading) {
             
@@ -135,7 +156,7 @@ extension ProjectDetailView {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     ForEach(files) { file in
-                        FileRowView(file: file)
+                        FileRowView(file: file, selectedBatchFile: $selectedBatchFile)
                     }
                 }
                 .padding(.vertical, 8)
