@@ -164,10 +164,10 @@ extension BatchJobManager {
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
-        guard let geminiFileURI = updatedBatchJobInfo.geminiFileURI else {
+        guard let geminiFileName = updatedBatchJobInfo.geminiFileName else {
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID, 
-                message: "File upload failed - no Gemini file URI available. Please retry the upload.",
+                message: "File upload failed - no Gemini file available. Please retry the upload.",
                 type: .error
             )
             throw BatchJobError.fileCouldNotBeUploaded
@@ -175,23 +175,22 @@ extension BatchJobManager {
         
         do {
             let displayName = updatedBatchJobInfo.displayJobName
-            let geminiBatchJobBody: GeminiBatchRequestBody = .init(
-                fileURI: geminiFileURI,
+//            let geminiBatchJobBody: GeminiBatchRequestBody = .init(
+//                fileURI: geminiFileURI,
+//                displayName: displayName
+//            )
+            let geminiService = await GeminiClient(
+                apiKey: geminiAPIKey,
+                model: geminiModel.rawValue,
                 displayName: displayName
-            )
-//            let geminiService = await GeminiClient(
-//                apiKey: geminiAPIKey,
-//                model: geminiModel.rawValue,
-//                displayName: geminiModel.displayName
-
-//            let geminiService = await GeminiClient(apiKey: geminiAPIKey, model: geminiModel.displayName, displayName: displayName)
-            
-//            let response = try await geminiService.createBatchJob(fileId: geminiFileURI.absoluteString)
-                
-                let response: GeminiBatchResponseBody = try await geminiService.createBatchJob(
-                    body: geminiBatchJobBody,
-                    model: geminiModel.rawValue
                 )
+            
+            let response = try await geminiService.createBatchJob(fileId: geminiFileName)
+                
+//                let response: GeminiBatchResponseBody = try await geminiService.createBatchJob(
+//                    body: geminiBatchJobBody,
+//                    model: geminiModel.rawValue
+//                )
 //                if let responseString = String(data: response.data, encoding: .utf8) {
 //                    print("Raw JSON Response:")
 //                    print(responseString)

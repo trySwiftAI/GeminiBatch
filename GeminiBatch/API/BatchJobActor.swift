@@ -35,6 +35,7 @@ actor BatchJobActor {
             expirationDate = createdDate.addingTimeInterval(48 * 60 * 60)
         }
         
+        batchJob.batchFile.geminiFileName = geminiFile.name
         batchJob.batchFile.geminiFileURI = geminiFile.uri
         batchJob.batchFile.geminiFileCreatedAt = createdDate
         batchJob.batchFile.geminiFileExpirationTime = expirationDate
@@ -101,6 +102,7 @@ actor BatchJobActor {
             jobStatus: batchJob.jobStatus,
             geminiJobName: batchJob.geminiJobName,
             displayJobName: batchJob.displayJobName,
+            geminiFileName: batchJob.batchFile.geminiFileName,
             geminiFileURI: batchJob.batchFile.geminiFileURI,
             isGeminiFileExpired: batchJob.batchFile.isGeminiFileExpired,
             geminiFileStatus: batchJob.batchFile.geminiFileStatus ?? .unspecified,
@@ -130,6 +132,7 @@ struct BatchJobInfo: Sendable {
     let jobStatus: BatchJobStatus
     let geminiJobName: String?
     let displayJobName: String
+    let geminiFileName: String?
     let geminiFileURI: URL?
     let isGeminiFileExpired: Bool
     let geminiFileStatus: BatchFileStatus

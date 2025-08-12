@@ -1,5 +1,5 @@
 //
-//  GeminiCliet.swift
+//  GeminiClient.swift
 //  GeminiBatch
 //
 //  Created by Natasha Murashev on 8/11/25.
@@ -31,13 +31,22 @@ struct GeminiClient {
         request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
+//        // Extract just the file ID from the full URL if needed
+//        let cleanFileId: String
+//        if fileId.hasPrefix("https://") {
+//            // Extract the file ID from URL like "https://generativelanguage.googleapis.com/v1beta/files/34iwswvmsy5e"
+//            cleanFileId = String(fileId.split(separator: "/").last ?? "")
+//        } else if fileId.hasPrefix("files/") {
+//            cleanFileId = fileId
+//        } else {
+//            cleanFileId = "files/\(fileId)"
+//        }
+        
         let requestBody = BatchGenerateContentRequest(
             batch: BatchConfig(
                 displayName: displayName,
                 inputConfig: InputConfig(
-                    requests: RequestsConfig(
-                        fileName: fileId
-                    )
+                    fileName: fileId
                 )
             )
         )
@@ -63,7 +72,12 @@ struct GeminiClient {
         }
         
         guard 200...299 ~= httpResponse.statusCode else {
-            throw GeminiBatchError.httpError(httpResponse.statusCode)
+            // Try to parse the error response to get the actual error message
+            if let errorResponse = try? JSONDecoder().decode(GeminiErrorResponse.self, from: data) {
+                throw GeminiBatchError.apiError(errorResponse.error.message, errorResponse.error.code)
+            } else {
+                throw GeminiBatchError.httpError(httpResponse.statusCode)
+            }
         }
         
         let batchResponse = try JSONDecoder().decode(GeminiBatchResponseBody.self, from: data)
@@ -89,15 +103,23 @@ private struct BatchConfig: Codable {
 }
 
 private struct InputConfig: Codable {
-    let requests: RequestsConfig
-}
-
-private struct RequestsConfig: Codable {
     let fileName: String
     
     enum CodingKeys: String, CodingKey {
         case fileName = "file_name"
     }
+}
+
+// MARK: - Error Response Models
+
+private struct GeminiErrorResponse: Codable {
+    let error: GeminiError
+}
+
+private struct GeminiError: Codable {
+    let code: Int
+    let message: String
+    let status: String
 }
 
 // MARK: - Errors
@@ -106,4 +128,20 @@ enum GeminiBatchError: Error {
     case invalidResponse
     case httpError(Int)
     case decodingError(Error)
+    case apiError(String, Int) // message, code
+}
+
+extension GeminiBatchError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse:
+            return "Invalid response from server"
+        case .httpError(let statusCode):
+            return "HTTP error with status code: \(statusCode)"
+        case .decodingError(let error):
+            return "Failed to decode response: \(error.localizedDescription)"
+        case .apiError(let message, let code):
+            return "API Error (\(code)): \(message)"
+        }
+    }
 }
