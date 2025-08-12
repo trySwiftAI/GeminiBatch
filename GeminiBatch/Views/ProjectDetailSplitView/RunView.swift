@@ -11,6 +11,7 @@ import SwiftData
 struct RunView: View {
     
     @Binding var runningBatchJob: BatchJob?
+    @Environment(\.modelContext) private var modelContext
     
     var body: some View {
         if let runningBatchJob {
@@ -18,6 +19,9 @@ struct RunView: View {
                 headerSection(for: runningBatchJob)
                 Divider()
                 messagesSection(for: runningBatchJob)
+            }
+            .onChange(of: runningBatchJob) { oldCount, newCount in
+                
             }
         } else {
             EmptyView()
@@ -141,6 +145,7 @@ extension RunView {
                 messagesList(for: batchJob)
             }
         }
+        .id(batchJob.jobStatusMessages.count) // Force view refresh when message count changes
     }
     
     private var emptyMessagesView: some View {
@@ -174,7 +179,11 @@ extension RunView {
                 .padding(.horizontal)
                 .padding(.bottom)
             }
-            .onChange(of: batchJob.jobStatusMessages.count) { _, _ in
+            .onChange(of: runningBatchJob) {
+                // Auto-scroll to bottom when the batch job changes
+                // This will trigger when the binding updates
+            }
+            .onChange(of: batchJob.jobStatusMessages.count) { _, newCount in
                 // Auto-scroll to bottom when new messages arrive
                 if let lastMessage = batchJob.jobStatusMessages.last {
                     withAnimation(.easeInOut(duration: 0.5)) {

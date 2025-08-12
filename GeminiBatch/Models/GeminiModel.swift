@@ -8,23 +8,32 @@
 import Foundation
 
 enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
-    case flashLite
-    case flash
     case pro
-    case flash2Lite
+    case flash
+    case flashLite
     case flash2
-    case custom(String)
+    case flash2Lite
     
-    var id: String { 
-        switch self {
-        case .flashLite, .flash, .pro, .flash2Lite, .flash2:
-            return rawValue
-        case .custom(let modelName):
-            return modelName
+    var id: String { rawValue }
+    
+    init?(rawValue: String) {
+        switch rawValue {
+        case "gemini-2.5-flash-lite":
+            self = .flashLite
+        case "gemini-2.5-flash":
+            self = .flash
+        case "gemini-2.5-pro":
+            self = .pro
+        case "gemini-2.0-flash-lite":
+            self = .flash2Lite
+        case "gemini-2.0-flash":
+            self = .flash2
+        default:
+            return nil
         }
     }
     
-    var rawValue: String {
+    nonisolated var rawValue: String {
         switch self {
         case .flashLite:
             return "gemini-2.5-flash-lite"
@@ -36,17 +45,7 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
             return "gemini-2.0-flash-lite"
         case .flash2:
             return "gemini-2.0-flash"
-        case .custom(let modelName):
-            return modelName
         }
-    }
-    
-    static var allCases: [GeminiModel] {
-        return [.flashLite, .flash, .pro, .flash2Lite, .flash2, .custom("Custom")]
-    }
-    
-    static var allPredefinedCases: [GeminiModel] {
-        return [.pro, .flash, .flashLite, .flash2, .flash2Lite]
     }
     
     var displayName: String {
@@ -61,53 +60,7 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
             return "Gemini 2.0 Flash-Lite"
         case .flash2:
             return "Gemini 2.0 Flash"
-        case .custom(let modelName):
-            if modelName == "Custom" {
-                return "Custom Model"
-            }
-            return "Custom: \(modelName)"
         }
-    }
-    
-    var description: String {
-        switch self {
-        case .flashLite:
-            return "Large scale processing, low latency, high volume tasks which require thinking, lower cost"
-        case .flash:
-            return "Large scale processing (e.g. multiple pdfs), low latency, high volume tasks which require thinking, agentic use cases"
-        case .pro:
-            return "Coding, reasoning, multimodal understanding"
-        case .flash2Lite:
-            return "Long context, realtime streaming, native tool use"
-        case .flash2:
-            return "Multimodal understanding, realtime streaming, native tool use"
-        case .custom:
-            return "Custom model with user-defined pricing"
-        }
-    }
-    
-    var useCases: [String] {
-        switch self {
-        case .flashLite:
-            return ["Data transformation", "Translation", "Summarization"]
-        case .flash:
-            return ["Reason over complex problems", "Show the thinking process of the model", "Call tools natively"]
-        case .pro:
-            return ["Reason over complex problems", "Tackle difficult code, math and STEM problems", "Use the long context for analyzing large datasets, codebases or documents"]
-        case .flash2Lite:
-            return ["Process 10,000 lines of code", "Call tools natively", "Stream images and video in realtime"]
-        case .flash2:
-            return ["Process 10,000 lines of code", "Call tools natively, like Search", "Stream images and video in realtime"]
-        case .custom:
-            return ["User-defined use cases"]
-        }
-    }
-    
-    var isCustom: Bool {
-        if case .custom = self {
-            return true
-        }
-        return false
     }
     
     // Regular API pricing per 1M tokens in USD
@@ -123,8 +76,6 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
             return 0.075
         case .flash2:
             return 0.10
-        case .custom:
-            return 0.0 // Default for custom, should be set by user
         }
     }
     
@@ -140,8 +91,6 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
             return 0.30
         case .flash2:
             return 0.40
-        case .custom:
-            return 0.0 // Default for custom, should be set by user
         }
     }
     
@@ -196,8 +145,6 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
             return 4000
         case .flash2:
             return 2000
-        case .custom:
-            return 1000 // Default for custom
         }
     }
     
@@ -213,8 +160,6 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
             return 30
         case .flash2:
             return 15
-        case .custom:
-            return 0 // Default for custom
         }
     }
     
@@ -226,8 +171,6 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
             return 0
         case .flash2Lite, .flash2:
             return 1500
-        case .custom:
-            return 0
         }
     }
     
@@ -238,33 +181,12 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
             return "Jan 2025"
         case .flash2Lite, .flash2:
             return "Aug 2024"
-        case .custom:
-            return "Unknown"
         }
     }
     
     // Helper methods for pricing display
     func formatPrice(_ price: Double) -> String {
         return String(format: "$%.3f", price)
-    }
-    
-    func getBatchSavings() -> String {
-        return "50% off regular pricing"
-    }
-    
-    // Create custom model with pricing
-    static func customModel(name: String, inputPrice: Double, outputPrice: Double) -> GeminiModel {
-        return .custom(name)
-    }
-    
-    // Update custom model pricing (would need to be implemented with external storage)
-    func withCustomPricing(inputPrice: Double, outputPrice: Double) -> GeminiModel {
-        switch self {
-        case .custom(let name):
-            return .custom(name) // In a real implementation, you'd store the pricing separately
-        default:
-            return self
-        }
     }
     
     // Calculate cost for given token counts
@@ -276,7 +198,7 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
         let effectiveInputPrice = customInputPrice ?? regularInputPrice
         let effectiveOutputPrice = customOutputPrice ?? regularOutputPrice
         
-        if isHighVolume, let highInputPrice = regularInputPriceHighVolume, let highOutputPrice = regularOutputPriceHighVolume, !isCustom {
+        if isHighVolume, let highInputPrice = regularInputPriceHighVolume, let highOutputPrice = regularOutputPriceHighVolume {
             inputCost = (Double(inputTokens) / 1_000_000) * highInputPrice
             outputCost = (Double(outputTokens) / 1_000_000) * highOutputPrice
         } else {
@@ -295,7 +217,7 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
         let effectiveInputPrice = customInputPrice ?? regularInputPrice
         let effectiveOutputPrice = customOutputPrice ?? regularOutputPrice
         
-        if isHighVolume, let highInputPrice = batchInputPriceHighVolume, let highOutputPrice = batchOutputPriceHighVolume, !isCustom {
+        if isHighVolume, let highInputPrice = batchInputPriceHighVolume, let highOutputPrice = batchOutputPriceHighVolume {
             inputCost = (Double(inputTokens) / 1_000_000) * highInputPrice
             outputCost = (Double(outputTokens) / 1_000_000) * highOutputPrice
         } else {
@@ -305,16 +227,5 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
         }
         
         return inputCost + outputCost
-    }
-}
-
-// MARK: - Hashable Conformance
-extension GeminiModel {
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(rawValue)
-    }
-    
-    static func == (lhs: GeminiModel, rhs: GeminiModel) -> Bool {
-        return lhs.rawValue == rhs.rawValue
     }
 }

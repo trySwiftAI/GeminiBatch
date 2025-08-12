@@ -14,20 +14,24 @@ struct ProjectDetailSplitView: View {
     
     @StateObject private var hide = SideHolder(.secondary)
     @State private var selectedBatchFile: BatchFile?
-    @State private var selectedGeminiModel: GeminiModel? = nil
+    @State private var selectedGeminiModel: GeminiModel = .pro
     @State private var keychainManager: ProjectKeychainManager
     @State private var runningBatchJob: BatchJob?
     
     init(project: Project) {
         self.project = project
         self._keychainManager = State(initialValue: ProjectKeychainManager(project: project))
+        
+        if let geminiModel = GeminiModel(rawValue: project.geminiModel) {
+            self._selectedGeminiModel = State(initialValue: geminiModel)
+        }
     }
     
     var body: some View {
         Split(
             primary: {
                 ProjectDetailView(
-                    project: project, 
+                    project: project,
                     selectedBatchFile: $selectedBatchFile,
                     selectedGeminiModel: $selectedGeminiModel,
                     keychainManager: $keychainManager,
@@ -50,6 +54,9 @@ struct ProjectDetailSplitView: View {
         }
         .onChange(of: project.id) {
             keychainManager = ProjectKeychainManager(project: project)
+        }
+        .onChange(of: selectedGeminiModel) {
+            project.geminiModel = selectedGeminiModel.rawValue
         }
     }
 }

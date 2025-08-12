@@ -11,6 +11,7 @@ import SwiftData
 
 class BatchJobManager {
     
+    private var geminiAPIKey: String
     private var geminiService: GeminiService
     private var geminiModel: GeminiModel
     private var batchJobID: PersistentIdentifier
@@ -22,6 +23,7 @@ class BatchJobManager {
         batchJobID: PersistentIdentifier,
         modelContainer: ModelContainer
     ) {
+        self.geminiAPIKey = geminiAPIKey
         geminiService = AIProxy.geminiDirectService(
                  unprotectedAPIKey: geminiAPIKey
         )
@@ -163,7 +165,7 @@ extension BatchJobManager {
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
-        guard let geminiFileName = updatedBatchJobInfo.geminiFileURI else {
+        guard let geminiFileURI = updatedBatchJobInfo.geminiFileURI else {
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID, 
                 message: "File upload failed - no Gemini file URI available. Please retry the upload.",
@@ -175,26 +177,40 @@ extension BatchJobManager {
         do {
             let displayName = updatedBatchJobInfo.displayJobName
             let geminiBatchJobBody: GeminiBatchRequestBody = .init(
-                fileName: geminiFileName.absoluteString,
+                fileURI: geminiFileURI,
                 displayName: displayName
             )
-            let response: GeminiBatchResponseBody = try await geminiService.createBatchJob(
-                body: geminiBatchJobBody,
-                model: geminiModel.rawValue
-            )
+//            let geminiService = await GeminiClient(
+//                apiKey: geminiAPIKey,
+//                model: geminiModel.rawValue,
+//                displayName: geminiModel.displayName
+
+//            let geminiService = await GeminiClient(apiKey: geminiAPIKey, model: geminiModel.displayName, displayName: displayName)
             
-            try await batchJobActor.updateBatchJobFromResponse(id: batchJobID, response: response)
+//            let response = try await geminiService.createBatchJob(fileId: geminiFileURI.absoluteString)
+                
+                let response: GeminiBatchResponseBody = try await geminiService.createBatchJob(
+                    body: geminiBatchJobBody,
+                    model: geminiModel.rawValue
+                )
+//                if let responseString = String(data: response.data, encoding: .utf8) {
+//                    print("Raw JSON Response:")
+//                    print(responseString)
+//                }
+                
+                try await batchJobActor.updateBatchJobFromResponse(id: batchJobID, response: response)
+                
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: "Batch job started successfully. Job Name: \(response.name). Status: \(response.state?.rawValue ?? "pending")",
+                    type: .success
+                )
             
-            try await batchJobActor.addBatchJobMessage(
-                id: batchJobID,
-                message: "Batch job started successfully. Job Name: \(response.name). Status: \(response.state?.rawValue ?? "pending")",
-                type: .success
-            )
             
         } catch {
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID, 
-                message: "Failed to start batch job: \(error.localizedDescription). Please check your API key and retry.",
+                message: "Failed to start batch job: \(String(describing: error)). Please check your API key and retry.",
                 type: .error
             )
             throw error

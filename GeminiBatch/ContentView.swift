@@ -18,6 +18,7 @@ struct ContentView: View {
         } detail: {
             if let project = selectedProject {
                 ProjectDetailSplitView(project: project)
+                    .id(project.id)
             } else {
                 NoProjectSelectedView()
             }

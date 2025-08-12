@@ -14,6 +14,7 @@ final class Project {
     var name: String
     var createdAt: Date
     var updatedAt: Date
+    var geminiModel: String
     
     @Relationship(deleteRule: .cascade, inverse: \BatchFile.project)
     var batchFiles: [BatchFile] = []
@@ -22,5 +23,6 @@ final class Project {
         self.name = name
         self.createdAt = Date()
         self.updatedAt = Date()
+        self.geminiModel = GeminiModel.pro.rawValue
     }
 }

@@ -14,20 +14,19 @@ struct FileRowView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ToastPresenter.self) private var toastPresenter
     @EnvironmentObject private var hide: SideHolder
-
+    
     let file: BatchFile
     @Binding var selectedBatchFile: BatchFile?
-    @Binding var selectedGeminiModel: GeminiModel?
+    @Binding var selectedGeminiModel: GeminiModel
     @Binding var keychainManager: ProjectKeychainManager
     @Binding var runningBatchJob: BatchJob?
-
+    
     @State private var batchJobManager: BatchJobManager? = nil
     @State private var isRunning: Bool = false
     @State private var canBeRun: Bool = false
     
     private var runButtonDisabled: Bool {
         return keychainManager.geminiAPIKey.isEmpty ||
-        selectedGeminiModel == nil ||
         !canBeRun
     }
     
@@ -57,11 +56,11 @@ extension FileRowView {
     @ViewBuilder
     private var runFileButton: some View {
         Button {
-            if let batchJob = file.batchJob, let geminiModel = selectedGeminiModel {
+            if let batchJob = file.batchJob {
                 selectedBatchFile = file
                 batchJobManager = BatchJobManager(
                     geminiAPIKey: keychainManager.geminiAPIKey,
-                    geminiModel: geminiModel,
+                    geminiModel: selectedGeminiModel,
                     batchJobID: batchJob.id,
                     modelContainer: modelContext.container
                 )
