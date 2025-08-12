@@ -121,7 +121,7 @@ extension BatchJobManager {
         } catch {
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID, 
-                message: "Failed to upload file to Gemini: \(error.localizedDescription). Please check your connection and retry.",
+                message: "Failed to upload file to Gemini: \(error.localizedDescription)",
                 type: .error
             )
             throw error
@@ -209,7 +209,7 @@ extension BatchJobManager {
         } catch {
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID, 
-                message: "Failed to start batch job: \(String(describing: error)). Please check your API key and retry.",
+                message: "Failed to start batch job: \(String(describing: error))",
                 type: .error
             )
             throw error
