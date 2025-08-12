@@ -120,11 +120,9 @@ extension FileRowView {
         }
         
         switch batchJob.jobStatus {
-        case .notStarted, .fileUploaded, .unspecified, .failed, .cancelled, .expired, .jobFileDownloaded:
-            canBeRun = true
-        case .pending, .running:
+        case .failed, .cancelled, .expired, .jobFileDownloaded:
             canBeRun = false
-        case .succeeded:
+        case .notStarted, .fileUploaded, .unspecified, .pending, .running, .succeeded:
             canBeRun = true
         }
     }
