@@ -113,10 +113,9 @@ extension BatchJobManager {
             
             try await batchJobActor.updateBatchJobAndFile(id: batchJobID, from: geminiFileActive)
             
-            let fileName = geminiFileActive.uri.lastPathComponent
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID,
-                message: "File uploaded and processed successfully. Gemini File Name: \(fileName)",
+                message: "File uploaded and processed successfully. Gemini File Name: \(geminiFile.uri.absoluteString)",
                 type: .success
             )
         } catch {
