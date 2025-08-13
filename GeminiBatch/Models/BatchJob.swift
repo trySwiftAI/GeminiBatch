@@ -14,6 +14,7 @@ final class BatchJob {
     var displayJobName: String
     var startedAt: Date? = nil
     var jobStatus: BatchJobStatus
+    var resultsFileName: String?
     
     @Relationship(deleteRule: .cascade)
     var jobStatusMessages: [BatchJobMessage] = []

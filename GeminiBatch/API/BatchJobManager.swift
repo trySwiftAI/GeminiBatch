@@ -249,6 +249,10 @@ extension BatchJobManager {
             let response = try await geminiService.pollForBatchJobComplete(batchJobName: batchJobName)
             print("RESPONSE: \(response)")
             print(String(describing: response.state))
+                        
+            if batchJobInfo.resultsFileName == nil, let responseFile = response.response?.responsesFile {
+                try await batchJobActor.updateBatchJobResult(id: batchJobID, resultsFileName: responseFile)
+            }
             
             if let responseState = response.state {
                 let status = BatchJobStatus(from: responseState)
@@ -311,7 +315,6 @@ extension BatchJobManager {
     }
 
     nonisolated private func downloadBatchResult() async throws {
-        // Add "before" message
         try await batchJobActor.addBatchJobMessage(
             id: batchJobID,
             message: "Downloading batch job results...",
@@ -367,35 +370,50 @@ extension BatchJobManager {
         }
         
         do {
-            // Log the exact file path being requested
-            let responseFileName = "files/\(batchJobName)"
+            // Create GeminiClient for file download
+            let geminiClient = await GeminiClient(
+                apiKey: geminiAPIKey,
+                model: geminiModel.rawValue,
+                displayName: updatedBatchJobInfo.displayJobName
+            )
+            
+            
+            guard let resultsFileName = updatedBatchJobInfo.resultsFileName else {
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: "The batch results file in unavailable. Will attempt to retry.",
+                    type: .error
+                )
+                try await pollBatchJobStatus() // TODO GET IMMEDIATE STATUS, no need to poll
+                throw BatchJobError.resultsFileNotStored
+            }
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID,
-                message: "Attempting to download results from: \(responseFileName)",
+                message: "Attempting to download results for batch results file: \(resultsFileName)",
                 type: .pending
             )
             
-            let batchResultsData = try await geminiService.downloadBatchResults(responsesFileName: responseFileName)
+            // Use the new GeminiClient download method instead of AIProxy
+            let batchResultsData = try await geminiClient.downloadFile(fileName: resultsFileName)
             try await batchJobActor.saveResult(id: batchJobID, data: batchResultsData)
             
-            // Add "after" success message
             let resultSize = ByteCountFormatter.string(fromByteCount: Int64(batchResultsData.count), countStyle: .file)
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID,
                 message: "Results downloaded successfully! File size: \(resultSize). Batch job complete.",
                 type: .success
             )
-        } catch let aiProxyError as AIProxyError {
-            // Handle AIProxy-specific errors with detailed information
-            let errorMessage = switch aiProxyError {
-            case .unsuccessfulRequest(let statusCode, let responseBody):
-                "HTTP \(statusCode) error: \(responseBody)"
-            case .assertion(let message):
-                "Assertion error: \(message)"
-            case .deviceCheckIsUnavailable:
-                "Device check unavailable: \(aiProxyError.localizedDescription)"
-            case .deviceCheckBypassIsMissing:
-                "Device check bypass missing: \(aiProxyError.localizedDescription)"
+        } catch let geminiError as GeminiBatchError {
+            // Handle GeminiBatchError from our custom client
+            let errorMessage = switch geminiError {
+            case .invalidResponse:
+                "Invalid response from Gemini API"
+            case .httpError(let statusCode):
+                "HTTP \(statusCode) error from Gemini API"
+            case .decodingError(let error):
+                "Failed to decode response: \(error.localizedDescription)"
+            case .apiError(let message, let code):
+                "Gemini API Error (\(code)): \(message)"
             }
             
             try await batchJobActor.addBatchJobMessage(
@@ -403,7 +421,7 @@ extension BatchJobManager {
                 message: "Failed to download batch results: \(errorMessage). Please check your connection and retry.",
                 type: .error
             )
-            throw aiProxyError
+            throw geminiError
         } catch {
             // Handle other errors
             let errorDescription = String(describing: error)
@@ -423,6 +441,7 @@ enum BatchJobError: Error, Identifiable, Equatable, LocalizedError {
     case fileCouldNotBeUploaded
     case batchJobCouldNotBeFetched
     case batchJobNotCompleted
+    case resultsFileNotStored
     
     var id: String {
         switch self {
@@ -436,6 +455,8 @@ enum BatchJobError: Error, Identifiable, Equatable, LocalizedError {
             return "batchJobCouldNotBeFetched"
         case .batchJobNotCompleted:
             return "batchJobNotCompleted"
+        case .resultsFileNotStored:
+            return "resultsFileNotStored"
         }
     }
     
@@ -451,6 +472,8 @@ enum BatchJobError: Error, Identifiable, Equatable, LocalizedError {
             return "Batch job could not be fetched. Please try again"
         case .batchJobNotCompleted:
             return "Batch job has not yet succeeded, so the file cannot be downloaded"
+        case .resultsFileNotStored:
+            return "Results file name not stored."
         }
     }
 }

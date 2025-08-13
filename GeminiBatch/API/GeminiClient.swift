@@ -84,6 +84,41 @@ struct GeminiClient {
         print(batchResponse)
         return batchResponse
     }
+    
+    /// Downloads file content from Gemini API
+    /// - Parameter fileName: The file name (e.g., "files/abc123" or just "abc123")
+    /// - Returns: Data containing the file content
+    func downloadFile(fileName: String) async throws -> Data {
+        /*         let fileName = "files/batch-x5asuw4h8bbg4p98m1wpfzoktq1dv1gyzax7" */
+        let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/\(fileName):download?alt=media")!
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        print(response)
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("Raw JSON Response:")
+            print(responseString)
+        }
+        print(data)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw GeminiBatchError.invalidResponse
+        }
+        
+        guard 200...299 ~= httpResponse.statusCode else {
+            // Try to parse the error response to get the actual error message
+            if let errorResponse = try? JSONDecoder().decode(GeminiErrorResponse.self, from: data) {
+                throw GeminiBatchError.apiError(errorResponse.error.message, errorResponse.error.code)
+            } else {
+                throw GeminiBatchError.httpError(httpResponse.statusCode)
+            }
+        }
+        
+        return data
+    }
 }
 
 // MARK: - Request Models

@@ -74,6 +74,15 @@ actor BatchJobActor {
         try modelContext.save()
     }
     
+    func updateBatchJobResult(id: PersistentIdentifier, resultsFileName: String) throws {
+        guard let batchJob = modelContext.model(for: id) as? BatchJob else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        batchJob.resultsFileName = resultsFileName
+        try modelContext.save()
+    }
+    
     func updateBatchJobStatusMessage(id: PersistentIdentifier, statusMessage: String, type: BatchJobMessageType) throws {
         guard let batchJob = modelContext.model(for: id) as? BatchJob else {
             throw BatchJobError.batchJobCouldNotBeFetched
@@ -106,7 +115,8 @@ actor BatchJobActor {
             geminiFileURI: batchJob.batchFile.geminiFileURI,
             isGeminiFileExpired: batchJob.batchFile.isGeminiFileExpired,
             geminiFileStatus: batchJob.batchFile.geminiFileStatus ?? .unspecified,
-            batchFileStoredURL: batchJob.batchFile.storedURL
+            batchFileStoredURL: batchJob.batchFile.storedURL,
+            resultsFileName: batchJob.resultsFileName
         )
     }
     
@@ -137,4 +147,5 @@ struct BatchJobInfo: Sendable {
     let isGeminiFileExpired: Bool
     let geminiFileStatus: BatchFileStatus
     let batchFileStoredURL: URL
+    let resultsFileName: String?
 }
