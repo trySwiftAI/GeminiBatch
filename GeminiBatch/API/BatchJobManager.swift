@@ -247,6 +247,8 @@ extension BatchJobManager {
         
         do {
             let response = try await geminiService.pollForBatchJobComplete(batchJobName: batchJobName)
+            print("RESPONSE: \(response)")
+            print(String(describing: response.state))
             
             if let responseState = response.state {
                 let status = BatchJobStatus(from: responseState)
@@ -365,7 +367,15 @@ extension BatchJobManager {
         }
         
         do {
-            let batchResultsData = try await geminiService.downloadBatchResults(responsesFileName: batchJobName)
+            // Log the exact file path being requested
+            let responseFileName = "files/\(batchJobName)"
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: "Attempting to download results from: \(responseFileName)",
+                type: .pending
+            )
+            
+            let batchResultsData = try await geminiService.downloadBatchResults(responsesFileName: responseFileName)
             try await batchJobActor.saveResult(id: batchJobID, data: batchResultsData)
             
             // Add "after" success message
@@ -375,10 +385,31 @@ extension BatchJobManager {
                 message: "Results downloaded successfully! File size: \(resultSize). Batch job complete.",
                 type: .success
             )
-        } catch {
+        } catch let aiProxyError as AIProxyError {
+            // Handle AIProxy-specific errors with detailed information
+            let errorMessage = switch aiProxyError {
+            case .unsuccessfulRequest(let statusCode, let responseBody):
+                "HTTP \(statusCode) error: \(responseBody)"
+            case .assertion(let message):
+                "Assertion error: \(message)"
+            case .deviceCheckIsUnavailable:
+                "Device check unavailable: \(aiProxyError.localizedDescription)"
+            case .deviceCheckBypassIsMissing:
+                "Device check bypass missing: \(aiProxyError.localizedDescription)"
+            }
+            
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID, 
-                message: "Failed to download batch results: \(error.localizedDescription). Please check your connection and retry.",
+                message: "Failed to download batch results: \(errorMessage). Please check your connection and retry.",
+                type: .error
+            )
+            throw aiProxyError
+        } catch {
+            // Handle other errors
+            let errorDescription = String(describing: error)
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID, 
+                message: "Failed to download batch results: \(errorDescription). Please check your connection and retry.",
                 type: .error
             )
             throw error

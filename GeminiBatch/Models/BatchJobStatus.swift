@@ -19,7 +19,7 @@ enum BatchJobStatus: String, CaseIterable, Codable, Sendable {
     case expired
     case jobFileDownloaded
     
-    nonisolated init(from geminiState: GeminiBatchResponseBody.State) {
+    nonisolated init(from geminiState: GeminiBatchResponseBody.BatchMetadata.State) {
         switch geminiState {
         case .unspecified:
             self = .unspecified
@@ -41,25 +41,25 @@ enum BatchJobStatus: String, CaseIterable, Codable, Sendable {
     var geminiStatusTitle: String {
         switch self {
         case .notStarted:
-            return "JOB_NOT_STARTED"
+            return "BATCH_NOT_STARTED"
         case .fileUploaded:
-            return "JOB_FILE_UPLOADED"
+            return "BATCH_FILE_UPLOADED"
         case .unspecified:
-            return "JOB_STATE_UNSPECIFIED"
+            return "BATCH_STATE_UNSPECIFIED"
         case .pending:
-            return "JOB_STATE_PENDING"
+            return "BATCH_STATE_PENDING"
         case .running:
-            return "JOB_STATE_RUNNING"
+            return "BATCH_STATE_RUNNING"
         case .succeeded:
-            return "JOB_STATE_SUCCEEDED"
+            return "BATCH_STATE_SUCCEEDED"
         case .failed:
-            return "JOB_STATE_FAILED"
+            return "BATCH_STATE_FAILED"
         case .cancelled:
-            return "JOB_STATE_CANCELLED"
+            return "BATCH_STATE_CANCELLED"
         case .expired:
-            return "JOB_STATE_EXPIRED"
+            return "BATCH_STATE_EXPIRED"
         case .jobFileDownloaded:
-            return "JOB_FILE_SAVED"
+            return "BATCH_FILE_SAVED"
         }
     }
     
