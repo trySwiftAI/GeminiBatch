@@ -140,7 +140,7 @@ extension BatchJobManager {
             throw BatchJobError.batchJobCouldNotBeFetched
         }
         
-        if batchJobInfo.geminiFileURI == nil || batchJobInfo.isGeminiFileExpired || batchJobInfo.geminiFileStatus == .failed {
+        if batchJobInfo.geminiFileURI == nil || batchJobInfo.isGeminiFileExpired || batchJobInfo.geminiFileStatus == nil {
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID,
                 message: "File needs to be re-uploaded before starting batch job...",

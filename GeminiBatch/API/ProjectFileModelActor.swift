@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 @ModelActor
-actor BatchFileModelActor {
+actor ProjectFileModelActor {
     
     func fetchBatchFile(id: PersistentIdentifier) -> BatchFile? {
         return modelContext.model(for: id) as? BatchFile
@@ -64,7 +64,7 @@ enum BatchFileModelActorError: Error, LocalizedError {
     }
 }
 
-extension BatchFileModelActor {
+extension ProjectFileModelActor {
     struct BatchFileInfo: Sendable {
         let id: UUID
         let name: String

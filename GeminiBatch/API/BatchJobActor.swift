@@ -127,7 +127,7 @@ actor BatchJobActor {
             geminiFileName: batchJob.batchFile.geminiFileName,
             geminiFileURI: batchJob.batchFile.geminiFileURI,
             isGeminiFileExpired: batchJob.batchFile.isGeminiFileExpired,
-            geminiFileStatus: batchJob.batchFile.geminiFileStatus ?? .unspecified,
+            geminiFileStatus: batchJob.batchFile.geminiFileStatus,
             batchFileStoredURL: batchJob.batchFile.storedURL,
             resultsFileName: batchJob.resultsFileName
         )
@@ -158,7 +158,7 @@ extension BatchJobActor {
         let geminiFileName: String?
         let geminiFileURI: URL?
         let isGeminiFileExpired: Bool
-        let geminiFileStatus: BatchFileStatus
+        let geminiFileStatus: BatchFileStatus?
         let batchFileStoredURL: URL
         let resultsFileName: String?
     }

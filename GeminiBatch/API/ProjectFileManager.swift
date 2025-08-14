@@ -35,7 +35,7 @@ actor ProjectFileManager {
     
     nonisolated func deleteBatchFile(
         fileId: PersistentIdentifier,
-        using batchFileActor: BatchFileModelActor
+        using batchFileActor: ProjectFileModelActor
     ) async throws(ProjectFileError) {
         // Get batch file info first to get the stored URL
         guard let batchFileInfo = await batchFileActor.getBatchFileInfo(id: fileId) else {
@@ -110,7 +110,7 @@ actor ProjectFileManager {
     nonisolated func saveBatchFileResult(
         resultData: Data,
         batchFileId: PersistentIdentifier,
-        using batchFileActor: BatchFileModelActor
+        using batchFileActor: ProjectFileModelActor
     ) async throws(ProjectFileError) {
         // Get batch file info first
         guard let batchFileInfo = await batchFileActor.getBatchFileInfo(id: batchFileId) else {
