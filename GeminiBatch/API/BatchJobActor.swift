@@ -149,16 +149,17 @@ actor BatchJobActor {
             )
     }
 }
-
-struct BatchJobInfo: Sendable {
-    let batchFileName: String
-    let jobStatus: BatchJobStatus
-    let geminiJobName: String?
-    let displayJobName: String
-    let geminiFileName: String?
-    let geminiFileURI: URL?
-    let isGeminiFileExpired: Bool
-    let geminiFileStatus: BatchFileStatus
-    let batchFileStoredURL: URL
-    let resultsFileName: String?
+extension BatchJobActor {
+    struct BatchJobInfo: Sendable {
+        let batchFileName: String
+        let jobStatus: BatchJobStatus
+        let geminiJobName: String?
+        let displayJobName: String
+        let geminiFileName: String?
+        let geminiFileURI: URL?
+        let isGeminiFileExpired: Bool
+        let geminiFileStatus: BatchFileStatus
+        let batchFileStoredURL: URL
+        let resultsFileName: String?
+    }
 }

@@ -430,7 +430,7 @@ extension BatchJobManager {
 extension BatchJobManager {
     nonisolated private func processJobStatus(
         fromResponse response: GeminiBatchResponseBody,
-        forBatchJob batchJobInfo: BatchJobInfo
+        forBatchJob batchJobInfo: BatchJobActor.BatchJobInfo
     ) async throws {
         if batchJobInfo.resultsFileName == nil, let responseFile = response.response?.responsesFile {
             try await batchJobActor.updateBatchJobResult(id: batchJobID, resultsFileName: responseFile)

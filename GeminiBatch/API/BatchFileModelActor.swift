@@ -64,12 +64,14 @@ enum BatchFileModelActorError: Error, LocalizedError {
     }
 }
 
-struct BatchFileInfo: Sendable {
-    let id: UUID
-    let name: String
-    let storedURL: URL
-    let resultPath: String?
-    let fileSize: Int64
-    let uploadedAt: Date
-    let projectId: UUID
+extension BatchFileModelActor {
+    struct BatchFileInfo: Sendable {
+        let id: UUID
+        let name: String
+        let storedURL: URL
+        let resultPath: String?
+        let fileSize: Int64
+        let uploadedAt: Date
+        let projectId: UUID
+    }
 }
