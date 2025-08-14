@@ -173,42 +173,105 @@ extension BatchJobManager {
             throw BatchJobError.fileCouldNotBeUploaded
         }
         
+        let displayName = updatedBatchJobInfo.displayJobName
+        let geminiBatchJobBody: GeminiBatchRequestBody = .init(
+            fileName: geminiFileName,
+            displayName: displayName
+        )
+        
         do {
-            let displayName = updatedBatchJobInfo.displayJobName
-//            let geminiBatchJobBody: GeminiBatchRequestBody = .init(
-//                fileURI: geminiFileURI,
-//                displayName: displayName
-//            )
-            let geminiService = await GeminiClient(
-                apiKey: geminiAPIKey,
-                model: geminiModel.rawValue,
-                displayName: displayName
-                )
+            let response: GeminiBatchResponseBody = try await geminiService.createBatchJob(
+                body: geminiBatchJobBody,
+                model: geminiModel.rawValue
+            )
             
-            let response = try await geminiService.createBatchJob(fileId: geminiFileName)
-                
-//                let response: GeminiBatchResponseBody = try await geminiService.createBatchJob(
-//                    body: geminiBatchJobBody,
-//                    model: geminiModel.rawValue
-//                )
-//                if let responseString = String(data: response.data, encoding: .utf8) {
-//                    print("Raw JSON Response:")
-//                    print(responseString)
-//                }
-                
-                try await batchJobActor.updateBatchJobFromResponse(id: batchJobID, response: response)
-                
+            try await batchJobActor.updateBatchJobFromResponse(id: batchJobID, response: response)
+            
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: "Batch job started successfully. Job Name: \(response.name). Status: \(response.state?.rawValue ?? "pending")",
+                type: .success
+            )
+            
+        } catch let aiProxyError as AIProxyError {
+            if case AIProxyError.unsuccessfulRequest(let statusCode, let responseBody) = aiProxyError {
+                let errorMessage = "Received non-200 status code: \(statusCode) with response body: \(responseBody)"
                 try await batchJobActor.addBatchJobMessage(
                     id: batchJobID,
-                    message: "Batch job started successfully. Job Name: \(response.name). Status: \(response.state?.rawValue ?? "pending")",
-                    type: .success
+                    message: errorMessage,
+                    type: .error
                 )
-            
-            
+            } else {
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: "AIProxy error: \(aiProxyError.localizedDescription)",
+                    type: .error
+                )
+            }
+            throw aiProxyError
         } catch {
             try await batchJobActor.addBatchJobMessage(
-                id: batchJobID, 
-                message: "Failed to start batch job: \(String(describing: error))",
+                id: batchJobID,
+                message: "Failed to start batch job: \(error.localizedDescription)",
+                type: .error
+            )
+            throw error
+        }
+    }
+    
+    nonisolated private func getJobStatus() async throws {
+        let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
+        guard let batchJobInfo else {
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: "Failed to fetch batch job information during status check. Please retry.",
+                type: .error
+            )
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        guard let batchJobName = batchJobInfo.geminiJobName else {
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: "No batch job name available for status polling. Please restart the batch job.",
+                type: .error
+            )
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        try await batchJobActor.addBatchJobMessage(
+            id: batchJobID,
+            message: "Checking batch job status...",
+            type: .pending
+        )
+        
+        do {
+            let response = try await geminiService.getBatchJobStatus(batchJobName: batchJobName)
+            
+            try await processJobStatus(
+                fromResponse: response,
+                forBatchJob: batchJobInfo
+            )
+        } catch let aiProxyError as AIProxyError {
+            if case AIProxyError.unsuccessfulRequest(let statusCode, let responseBody) = aiProxyError {
+                let errorMessage = "Received non-200 status code: \(statusCode) with response body: \(responseBody)"
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: errorMessage,
+                    type: .error
+                )
+            } else {
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: "AIProxy error: \(aiProxyError.localizedDescription)",
+                    type: .error
+                )
+            }
+            throw aiProxyError
+        } catch {
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: "Failed to get job status: \(error.localizedDescription).",
                 type: .error
             )
             throw error
@@ -227,6 +290,11 @@ extension BatchJobManager {
         }
         
         if batchJobInfo.jobStatus == .succeeded {
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: "The batch job has succeeded!",
+                type: .success
+            )
             return
         }
         
@@ -247,67 +315,15 @@ extension BatchJobManager {
         
         do {
             let response = try await geminiService.pollForBatchJobComplete(batchJobName: batchJobName)
-            print("RESPONSE: \(response)")
-            print(String(describing: response.state))
                         
-            if batchJobInfo.resultsFileName == nil, let responseFile = response.response?.responsesFile {
-                try await batchJobActor.updateBatchJobResult(id: batchJobID, resultsFileName: responseFile)
-            }
-            
-            if let responseState = response.state {
-                let status = BatchJobStatus(from: responseState)
-                try await batchJobActor.updateBatchJobStatus(id: batchJobID, status: status)
-                
-                // Add status update message
-                switch status {
-                case .pending:
-                    try await batchJobActor.addBatchJobMessage(
-                        id: batchJobID,
-                        message: "Batch job is pending - waiting to be processed by Gemini...",
-                        type: .pending
-                    )
-                case .running:
-                    try await batchJobActor.addBatchJobMessage(
-                        id: batchJobID,
-                        message: "Batch job is running - Gemini is processing your requests...",
-                        type: .pending
-                    )
-                case .succeeded:
-                    try await batchJobActor.addBatchJobMessage(
-                        id: batchJobID,
-                        message: "Batch job completed successfully! Ready to download results.",
-                        type: .success
-                    )
-                case .failed:
-                    try await batchJobActor.addBatchJobMessage(
-                        id: batchJobID,
-                        message: "Batch job failed. Please check your input file format and retry with a new job.",
-                        type: .error
-                    )
-                case .cancelled:
-                    try await batchJobActor.addBatchJobMessage(
-                        id: batchJobID,
-                        message: "Batch job was cancelled. You can retry with a new job if needed.",
-                        type: .error
-                    )
-                case .expired:
-                    try await batchJobActor.addBatchJobMessage(
-                        id: batchJobID,
-                        message: "Batch job expired after 48 hours. Please create a new job to retry.",
-                        type: .error
-                    )
-                default:
-                    try await batchJobActor.addBatchJobMessage(
-                        id: batchJobID,
-                        message: "Batch job status: \(responseState)",
-                        type: .pending
-                    )
-                }
-            }
+            try await processJobStatus(
+                fromResponse: response,
+                forBatchJob: batchJobInfo
+            )
         } catch {
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID, 
-                message: "Failed to check batch job status: \(error.localizedDescription). Will retry automatically.",
+                message: "Failed to check batch job status: \(error.localizedDescription).",
                 type: .error
             )
             throw error
@@ -340,21 +356,11 @@ extension BatchJobManager {
             try await startBatchJob()
         }
         
-        // Refresh batch job info after potential job start
         let updatedBatchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
         guard let updatedBatchJobInfo else {
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID, 
                 message: "Failed to fetch updated batch job information for download. Please retry.",
-                type: .error
-            )
-            throw BatchJobError.batchJobCouldNotBeFetched
-        }
-        
-        guard let batchJobName = updatedBatchJobInfo.geminiJobName else {
-            try await batchJobActor.addBatchJobMessage(
-                id: batchJobID, 
-                message: "No batch job name available for download. Please restart the batch job.",
                 type: .error
             )
             throw BatchJobError.batchJobCouldNotBeFetched
@@ -370,21 +376,13 @@ extension BatchJobManager {
         }
         
         do {
-            // Create GeminiClient for file download
-            let geminiClient = await GeminiClient(
-                apiKey: geminiAPIKey,
-                model: geminiModel.rawValue,
-                displayName: updatedBatchJobInfo.displayJobName
-            )
-            
-            
             guard let resultsFileName = updatedBatchJobInfo.resultsFileName else {
                 try await batchJobActor.addBatchJobMessage(
                     id: batchJobID,
                     message: "The batch results file in unavailable. Will attempt to retry.",
                     type: .error
                 )
-                try await pollBatchJobStatus() // TODO GET IMMEDIATE STATUS, no need to poll
+                try await getJobStatus()
                 throw BatchJobError.resultsFileNotStored
             }
             try await batchJobActor.addBatchJobMessage(
@@ -392,9 +390,8 @@ extension BatchJobManager {
                 message: "Attempting to download results for batch results file: \(resultsFileName)",
                 type: .pending
             )
-            
-            // Use the new GeminiClient download method instead of AIProxy
-            let batchResultsData = try await geminiClient.downloadFile(fileName: resultsFileName)
+
+            let batchResultsData = try await geminiService.downloadBatchResults(responsesFileName: resultsFileName)
             try await batchJobActor.saveResult(id: batchJobID, data: batchResultsData)
             
             let resultSize = ByteCountFormatter.string(fromByteCount: Int64(batchResultsData.count), countStyle: .file)
@@ -403,34 +400,90 @@ extension BatchJobManager {
                 message: "Results downloaded successfully! File size: \(resultSize). Batch job complete.",
                 type: .success
             )
-        } catch let geminiError as GeminiBatchError {
-            // Handle GeminiBatchError from our custom client
-            let errorMessage = switch geminiError {
-            case .invalidResponse:
-                "Invalid response from Gemini API"
-            case .httpError(let statusCode):
-                "HTTP \(statusCode) error from Gemini API"
-            case .decodingError(let error):
-                "Failed to decode response: \(error.localizedDescription)"
-            case .apiError(let message, let code):
-                "Gemini API Error (\(code)): \(message)"
+        } catch let aiProxyError as AIProxyError {
+            if case AIProxyError.unsuccessfulRequest(let statusCode, let responseBody) = aiProxyError {
+                let errorMessage = "Received non-200 status code: \(statusCode) with response body: \(responseBody)"
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: errorMessage,
+                    type: .error
+                )
+            } else {
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: "AIProxy error: \(aiProxyError.localizedDescription)",
+                    type: .error
+                )
             }
-            
-            try await batchJobActor.addBatchJobMessage(
-                id: batchJobID, 
-                message: "Failed to download batch results: \(errorMessage). Please check your connection and retry.",
-                type: .error
-            )
-            throw geminiError
+            throw aiProxyError
         } catch {
-            // Handle other errors
-            let errorDescription = String(describing: error)
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID, 
-                message: "Failed to download batch results: \(errorDescription). Please check your connection and retry.",
+                message: "Failed to download batch results: \(error.localizedDescription). Please check your connection and retry.",
                 type: .error
             )
             throw error
+        }
+    }
+}
+
+extension BatchJobManager {
+    nonisolated private func processJobStatus(
+        fromResponse response: GeminiBatchResponseBody,
+        forBatchJob batchJobInfo: BatchJobInfo
+    ) async throws {
+        if batchJobInfo.resultsFileName == nil, let responseFile = response.response?.responsesFile {
+            try await batchJobActor.updateBatchJobResult(id: batchJobID, resultsFileName: responseFile)
+        }
+        
+        if let responseState = response.state {
+            let status = BatchJobStatus(from: responseState)
+            try await batchJobActor.updateBatchJobStatus(id: batchJobID, status: status)
+            
+            switch status {
+            case .pending:
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: "Batch job is pending - waiting to be processed by Gemini...",
+                    type: .pending
+                )
+            case .running:
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: "Batch job is running - Gemini is processing your requests...",
+                    type: .pending
+                )
+            case .succeeded:
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: "Batch job completed successfully! Ready to download results.",
+                    type: .success
+                )
+            case .failed:
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: "Batch job failed. Please check your input file format and retry with a new job.",
+                    type: .error
+                )
+            case .cancelled:
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: "Batch job was cancelled. You can retry with a new job if needed.",
+                    type: .error
+                )
+            case .expired:
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: "Batch job expired after 48 hours. Please create a new job to retry.",
+                    type: .error
+                )
+            default:
+                try await batchJobActor.addBatchJobMessage(
+                    id: batchJobID,
+                    message: "Batch job status: \(responseState)",
+                    type: .pending
+                )
+            }
         }
     }
 }

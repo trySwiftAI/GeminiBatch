@@ -16,7 +16,10 @@ actor BatchJobActor {
         return modelContext.model(for: id) as? BatchJob
     }
     
-    func updateBatchJobAndFile(id: PersistentIdentifier, from geminiFile: GeminiFile) throws {
+    func updateBatchJobAndFile(
+        id: PersistentIdentifier,
+        from geminiFile: GeminiFile
+    ) throws {
         guard let batchJob = modelContext.model(for: id) as? BatchJob else {
             throw BatchJobError.batchJobCouldNotBeFetched
         }
@@ -45,7 +48,10 @@ actor BatchJobActor {
         try modelContext.save()
     }
     
-    func updateBatchJobFromResponse(id: PersistentIdentifier, response: GeminiBatchResponseBody) throws {
+    func updateBatchJobFromResponse(
+        id: PersistentIdentifier,
+        response: GeminiBatchResponseBody
+    ) throws {
         guard let batchJob = modelContext.model(for: id) as? BatchJob else {
             throw BatchJobError.batchJobCouldNotBeFetched
         }
@@ -65,7 +71,10 @@ actor BatchJobActor {
         try modelContext.save()
     }
     
-    func updateBatchJobStatus(id: PersistentIdentifier, status: BatchJobStatus) throws {
+    func updateBatchJobStatus(
+        id: PersistentIdentifier,
+        status: BatchJobStatus
+    ) throws {
         guard let batchJob = modelContext.model(for: id) as? BatchJob else {
             throw BatchJobError.batchJobCouldNotBeFetched
         }
@@ -92,7 +101,11 @@ actor BatchJobActor {
         try modelContext.save()
     }
     
-    func addBatchJobMessage(id: PersistentIdentifier, message: String, type: BatchJobMessageType) throws {
+    func addBatchJobMessage(
+        id: PersistentIdentifier,
+        message: String,
+        type: BatchJobMessageType
+    ) throws {
         guard let batchJob = modelContext.model(for: id) as? BatchJob else {
             throw BatchJobError.batchJobCouldNotBeFetched
         }
