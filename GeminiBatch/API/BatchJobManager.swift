@@ -119,12 +119,7 @@ extension BatchJobManager {
                 type: .success
             )
         } catch {
-            try await batchJobActor.addBatchJobMessage(
-                id: batchJobID, 
-                message: "Failed to upload file to Gemini: \(error.localizedDescription)",
-                type: .error
-            )
-            throw error
+            try await handleError(error, fallbackMessage: "Failed to upload file to Gemini")
         }
     }
     
@@ -173,10 +168,9 @@ extension BatchJobManager {
             throw BatchJobError.fileCouldNotBeUploaded
         }
         
-        let displayName = updatedBatchJobInfo.displayJobName
         let geminiBatchJobBody: GeminiBatchRequestBody = .init(
             fileName: geminiFileName,
-            displayName: displayName
+            displayName: updatedBatchJobInfo.displayJobName
         )
         
         do {
@@ -192,30 +186,8 @@ extension BatchJobManager {
                 message: "Batch job started successfully. Job Name: \(response.name). Status: \(response.state?.rawValue ?? "pending")",
                 type: .success
             )
-            
-        } catch let aiProxyError as AIProxyError {
-            if case AIProxyError.unsuccessfulRequest(let statusCode, let responseBody) = aiProxyError {
-                let errorMessage = "Received non-200 status code: \(statusCode) with response body: \(responseBody)"
-                try await batchJobActor.addBatchJobMessage(
-                    id: batchJobID,
-                    message: errorMessage,
-                    type: .error
-                )
-            } else {
-                try await batchJobActor.addBatchJobMessage(
-                    id: batchJobID,
-                    message: "AIProxy error: \(aiProxyError.localizedDescription)",
-                    type: .error
-                )
-            }
-            throw aiProxyError
         } catch {
-            try await batchJobActor.addBatchJobMessage(
-                id: batchJobID,
-                message: "Failed to start batch job: \(error.localizedDescription)",
-                type: .error
-            )
-            throw error
+            try await handleError(error, fallbackMessage: "Failed to start batch job")
         }
     }
     
@@ -252,29 +224,8 @@ extension BatchJobManager {
                 fromResponse: response,
                 forBatchJob: batchJobInfo
             )
-        } catch let aiProxyError as AIProxyError {
-            if case AIProxyError.unsuccessfulRequest(let statusCode, let responseBody) = aiProxyError {
-                let errorMessage = "Received non-200 status code: \(statusCode) with response body: \(responseBody)"
-                try await batchJobActor.addBatchJobMessage(
-                    id: batchJobID,
-                    message: errorMessage,
-                    type: .error
-                )
-            } else {
-                try await batchJobActor.addBatchJobMessage(
-                    id: batchJobID,
-                    message: "AIProxy error: \(aiProxyError.localizedDescription)",
-                    type: .error
-                )
-            }
-            throw aiProxyError
         } catch {
-            try await batchJobActor.addBatchJobMessage(
-                id: batchJobID,
-                message: "Failed to get job status: \(error.localizedDescription).",
-                type: .error
-            )
-            throw error
+            try await handleError(error, fallbackMessage: "Failed to get job status")
         }
     }
     
@@ -321,12 +272,7 @@ extension BatchJobManager {
                 forBatchJob: batchJobInfo
             )
         } catch {
-            try await batchJobActor.addBatchJobMessage(
-                id: batchJobID, 
-                message: "Failed to check batch job status: \(error.localizedDescription).",
-                type: .error
-            )
-            throw error
+            try await handleError(error, fallbackMessage: "Failed to get batch job status")
         }
     }
 
@@ -400,34 +346,14 @@ extension BatchJobManager {
                 message: "Results downloaded successfully! File size: \(resultSize). Batch job complete.",
                 type: .success
             )
-        } catch let aiProxyError as AIProxyError {
-            if case AIProxyError.unsuccessfulRequest(let statusCode, let responseBody) = aiProxyError {
-                let errorMessage = "Received non-200 status code: \(statusCode) with response body: \(responseBody)"
-                try await batchJobActor.addBatchJobMessage(
-                    id: batchJobID,
-                    message: errorMessage,
-                    type: .error
-                )
-            } else {
-                try await batchJobActor.addBatchJobMessage(
-                    id: batchJobID,
-                    message: "AIProxy error: \(aiProxyError.localizedDescription)",
-                    type: .error
-                )
-            }
-            throw aiProxyError
         } catch {
-            try await batchJobActor.addBatchJobMessage(
-                id: batchJobID, 
-                message: "Failed to download batch results: \(error.localizedDescription). Please check your connection and retry.",
-                type: .error
-            )
-            throw error
+            try await handleError(error, fallbackMessage: "Failed to download batch results")
         }
     }
 }
 
 extension BatchJobManager {
+    
     nonisolated private func processJobStatus(
         fromResponse response: GeminiBatchResponseBody,
         forBatchJob batchJobInfo: BatchJobActor.BatchJobInfo
@@ -484,6 +410,44 @@ extension BatchJobManager {
                     type: .pending
                 )
             }
+        }
+    }
+}
+
+extension BatchJobManager {
+    
+    nonisolated private func handleError(
+        _ error: Error,
+        fallbackMessage: String
+    ) async throws {
+        if let aiProxyError = error as? AIProxyError {
+            try await handleAIProxyError(aiProxyError)
+        } else {
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: "\(fallbackMessage): \(error.localizedDescription)",
+                type: .error
+            )
+        }
+        throw error
+    }
+    
+    nonisolated private func handleAIProxyError(
+        _ aiProxyError: AIProxyError
+    ) async throws {
+        if case AIProxyError.unsuccessfulRequest(let statusCode, let responseBody) = aiProxyError {
+            let errorMessage = "Received non-200 status code: \(statusCode) with response body: \(responseBody)"
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: errorMessage,
+                type: .error
+            )
+        } else {
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: "Error: \(aiProxyError.localizedDescription)",
+                type: .error
+            )
         }
     }
 }
