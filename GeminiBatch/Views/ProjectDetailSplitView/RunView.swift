@@ -265,7 +265,7 @@ struct BatchJobMessageRow: View {
     runningJob.addMessage("Warning: Rate limit encountered, retrying...", type: .error)
     runningJob.addMessage("Completed 300 out of 500 requests", type: .pending)
     
-    var viewModel = ProjectViewModel(project: project)
+    let viewModel = ProjectViewModel(project: project)
     viewModel.runningBatchJob = runningJob
     return RunView()
         .frame(width: 600, height: 500)
@@ -285,7 +285,7 @@ struct BatchJobMessageRow: View {
     job.jobStatus = .pending
     job.startedAt = Date()
     
-    var viewModel = ProjectViewModel(project: project)
+    let viewModel = ProjectViewModel(project: project)
     viewModel.runningBatchJob = job
     
     return RunView()
@@ -317,7 +317,7 @@ struct BatchJobMessageRow: View {
     completedJob.addMessage("Results file generated", type: .success)
     completedJob.addMessage("Batch job completed successfully", type: .success)
     
-    var viewModel = ProjectViewModel(project: project)
+    let viewModel = ProjectViewModel(project: project)
     viewModel.runningBatchJob = completedJob
     
     return RunView()
@@ -347,7 +347,7 @@ struct BatchJobMessageRow: View {
     failedJob.addMessage("Critical error: Unable to process batch file", type: .error)
     failedJob.addMessage("Batch job failed", type: .error)
     
-    var viewModel = ProjectViewModel(project: project)
+    let viewModel = ProjectViewModel(project: project)
     viewModel.runningBatchJob = failedJob
     
     return RunView()

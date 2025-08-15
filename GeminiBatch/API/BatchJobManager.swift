@@ -345,11 +345,10 @@ extension BatchJobManager {
             
             // Save results and parse token counts in parallel
             async let saveResultTask: Void = batchJobActor.saveResult(id: batchJobID, data: batchResultsData)
-            async let parseTokenCounts = parseTokenCounts(from: batchResultsData)
+            async let parseTokenCountsTask = parseTokenCounts(from: batchResultsData)
                     
-            _ = try await saveResultTask
-            let parsedTokenCounts = await parseTokenCounts
-            
+            let (_, parsedTokenCounts) = try await (saveResultTask, parseTokenCountsTask)
+
             try await batchJobActor.updateTokenCounts(
                 id: batchJobID,
                 totalTokenCount: parsedTokenCounts.totalTokenCount,
@@ -439,10 +438,10 @@ extension BatchJobManager {
         promptTokenCount: Int?,
         candidatesTokenCount: Int?
     ) {
-        var totalTokenCount: Int?
-        var thoughtsTokenCount: Int?
-        var promptTokenCount: Int?
-        var candidatesTokenCount: Int?
+        var totalTokenCount = 0
+        var thoughtsTokenCount = 0
+        var promptTokenCount = 0
+        var candidatesTokenCount = 0
         
         guard let jsonlString = String(data: data, encoding: .utf8) else {
             return (nil, nil, nil, nil)
@@ -461,25 +460,21 @@ extension BatchJobManager {
                 let response = try decoder.decode(BatchResultResponse.self, from: lineData)
 
                 if let usageMetadata = response.response.usageMetadata {
-                    totalTokenCount = usageMetadata.totalTokenCount ?? nil
-                    thoughtsTokenCount = usageMetadata.thoughtsTokenCount ?? nil
-                    promptTokenCount = usageMetadata.promptTokenCount ?? nil
-                    candidatesTokenCount = usageMetadata.candidatesTokenCount ?? nil
-                    
-                    // Stop parsing if we have all the required metadata
-                    if usageMetadata.totalTokenCount != nil &&
-                       usageMetadata.thoughtsTokenCount != nil &&
-                       usageMetadata.promptTokenCount != nil &&
-                       usageMetadata.candidatesTokenCount != nil {
-                        break
-                    }
+                    totalTokenCount += usageMetadata.totalTokenCount ?? 0
+                    thoughtsTokenCount += usageMetadata.thoughtsTokenCount ?? 0
+                    promptTokenCount += usageMetadata.promptTokenCount ?? 0
+                    candidatesTokenCount += usageMetadata.candidatesTokenCount ?? 0
                 }
             } catch {
                 // Continue processing other lines even if one fails to parse
                 continue
             }
         }
-        return (totalTokenCount, thoughtsTokenCount, promptTokenCount, candidatesTokenCount)
+        if totalTokenCount == 0  {
+            return (nil, nil, nil, nil)
+        } else {
+            return (totalTokenCount, thoughtsTokenCount, promptTokenCount, candidatesTokenCount)
+        }
     }
     
     nonisolated private func sendResultsDownloadedMessage(

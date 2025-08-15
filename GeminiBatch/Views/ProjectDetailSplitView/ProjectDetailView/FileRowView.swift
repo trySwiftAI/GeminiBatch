@@ -68,7 +68,6 @@ extension FileRowView {
                         do {
                             try await batchJobManager.run()
                             isRunning = false
-                            viewModel.runningBatchJob = nil
                         } catch {
                             toastPresenter.showErrorToast(withMessage: error.localizedDescription)
                             isRunning = false
