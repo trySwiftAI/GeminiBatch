@@ -8,7 +8,7 @@
 import SwiftUI
 
 @Observable
-class ToastPresenter {
+final class ToastPresenter {
     var message: String = ""
     var type: ToastType = .success
     var isPresented: Bool = false

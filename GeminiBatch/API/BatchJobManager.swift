@@ -9,7 +9,7 @@
 import Foundation
 import SwiftData
 
-class BatchJobManager {
+final class BatchJobManager {
     
     private var geminiAPIKey: String
     private var geminiService: GeminiService

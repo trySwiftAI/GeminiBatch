@@ -9,7 +9,7 @@ import Foundation
 import SwiftUI
 
 @Observable
-class ProjectKeychainManager {
+final class ProjectKeychainManager {
     private let project: Project
     private let keychainStorage: KeychainStorage
     
