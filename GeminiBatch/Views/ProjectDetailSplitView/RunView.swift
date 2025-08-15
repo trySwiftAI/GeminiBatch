@@ -10,16 +10,18 @@ import SwiftData
 
 struct RunView: View {
     @Environment(\.modelContext) private var modelContext
-    @Binding var runningBatchJob: BatchJob?
+    @Environment(ProjectViewModel.self) private var projectViewModel
     
     @Query private var allBatchJobs: [BatchJob]
     
     private var observedBatchJob: BatchJob? {
-        guard let runningBatchJob else { return nil }
+        guard let runningBatchJob = projectViewModel.runningBatchJob else { return nil }
         return allBatchJobs.first { $0.id == runningBatchJob.id }
     }
     
     var body: some View {
+        @Bindable var viewModel = projectViewModel
+        
         if let batchJob = observedBatchJob {
             VStack(spacing: 0) {
                 headerSection(for: batchJob)
@@ -241,12 +243,13 @@ struct BatchJobMessageRow: View {
 
 // MARK: - Preview
 #Preview("Running Job with Messages") {
+    let project = Project(name: "Sample Project")
     let batchFile = BatchFile(
         name: "batch_file",
         originalURL: URL(string: "http://")!,
         storedURL: URL(string: "http://")!,
         fileSize: 400,
-        project: Project(name: "New Project")
+        project: project
     )
     
     let runningJob = BatchJob(batchFile: batchFile)
@@ -262,33 +265,42 @@ struct BatchJobMessageRow: View {
     runningJob.addMessage("Warning: Rate limit encountered, retrying...", type: .error)
     runningJob.addMessage("Completed 300 out of 500 requests", type: .pending)
     
-    return RunView(runningBatchJob: .constant(runningJob))
+    var viewModel = ProjectViewModel(project: project)
+    viewModel.runningBatchJob = runningJob
+    return RunView()
         .frame(width: 600, height: 500)
+        .environment(viewModel)
 }
 
 #Preview("Job with No Messages") {
+    let project = Project(name: "Sample Project")
     let batchFile = BatchFile(
         name: "batch_file",
         originalURL: URL(string: "http://")!,
         storedURL: URL(string: "http://")!,
         fileSize: 400,
-        project: Project(name: "New Project")
+        project: project
     )
     let job = BatchJob(batchFile: batchFile)
     job.jobStatus = .pending
     job.startedAt = Date()
     
-    return RunView(runningBatchJob: .constant(job))
+    var viewModel = ProjectViewModel(project: project)
+    viewModel.runningBatchJob = job
+    
+    return RunView()
         .frame(width: 600, height: 500)
+        .environment(viewModel)
 }
 
 #Preview("Completed Job") {
+    let project = Project(name: "Sample Project")
     let batchFile = BatchFile(
         name: "batch_file",
         originalURL: URL(string: "http://")!,
         storedURL: URL(string: "http://")!,
         fileSize: 400,
-        project: Project(name: "New Project")
+        project: project
     )
     let completedJob = BatchJob(batchFile: batchFile)
     completedJob.geminiJobName = "completed_batch_job_456"
@@ -305,17 +317,22 @@ struct BatchJobMessageRow: View {
     completedJob.addMessage("Results file generated", type: .success)
     completedJob.addMessage("Batch job completed successfully", type: .success)
     
-    return RunView(runningBatchJob: .constant(completedJob))
+    var viewModel = ProjectViewModel(project: project)
+    viewModel.runningBatchJob = completedJob
+    
+    return RunView()
         .frame(width: 600, height: 500)
+        .environment(viewModel)
 }
 
 #Preview("Failed Job") {
+    let project = Project(name: "Sample Project")
     let batchFile = BatchFile(
         name: "batch_file",
         originalURL: URL(string: "http://")!,
         storedURL: URL(string: "http://")!,
         fileSize: 400,
-        project: Project(name: "New Project")
+        project: project
     )
     let failedJob = BatchJob(batchFile: batchFile)
     failedJob.geminiJobName = "failed_batch_job_789"
@@ -330,6 +347,10 @@ struct BatchJobMessageRow: View {
     failedJob.addMessage("Critical error: Unable to process batch file", type: .error)
     failedJob.addMessage("Batch job failed", type: .error)
     
-    return RunView(runningBatchJob: .constant(failedJob))
+    var viewModel = ProjectViewModel(project: project)
+    viewModel.runningBatchJob = failedJob
+    
+    return RunView()
         .frame(width: 600, height: 500)
+        .environment(viewModel)
 }

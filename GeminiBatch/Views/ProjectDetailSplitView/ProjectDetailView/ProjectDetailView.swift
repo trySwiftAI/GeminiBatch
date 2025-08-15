@@ -9,28 +9,25 @@ import SwiftUI
 
 struct ProjectDetailView: View {
     @Environment(ToastPresenter.self) private var toastPresenter
-    
-    let project: Project
-    @Binding var selectedBatchFile: BatchFile?
-    @Binding var selectedGeminiModel: GeminiModel
-    @Binding var keychainManager: ProjectKeychainManager
-    @Binding var runningBatchJob: BatchJob?
+    @Environment(ProjectViewModel.self) private var projectViewModel
     
     @State private var isAPIKeyVisible: Bool = false
     @FocusState private var isAPIKeyFocused
     
     var body: some View {
+        @Bindable var viewModel = projectViewModel
+        
         VStack(spacing: 20) {
-            projectHeader(project)
+            projectHeader(viewModel.project)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     apiKeySection
                     modelSelectionPicker
-                    if !project.batchFiles.isEmpty {
-                        fileListView(project.batchFiles)
+                    if !viewModel.project.batchFiles.isEmpty {
+                        fileListView(viewModel.project.batchFiles)
                     }
-                    FileUploadView(project: project)
+                    FileUploadView(project: viewModel.project)
                         .padding()
                 }
                 .frame(maxWidth: .infinity)
@@ -68,6 +65,8 @@ extension ProjectDetailView {
     
     @ViewBuilder
     private var apiKeySection: some View {
+        @Bindable var viewModel = projectViewModel
+        
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("The Gemini API key for this project (required)")
@@ -81,18 +80,18 @@ extension ProjectDetailView {
                 ZStack(alignment: .trailing) {
                     Group {
                         if isAPIKeyVisible {
-                            TextField("Enter your Gemini API Key", text: $keychainManager.geminiAPIKey)
+                            TextField("Enter your Gemini API Key", text: $viewModel.keychainManager.geminiAPIKey)
                         } else {
-                            SecureField("Enter your Gemini API Key", text: $keychainManager.geminiAPIKey)
+                            SecureField("Enter your Gemini API Key", text: $viewModel.keychainManager.geminiAPIKey)
                         }
                     }
                     .textFieldStyle(.plain)
                     .padding(6)
-                    .padding(.trailing, !keychainManager.geminiAPIKey.isEmpty ? 30 : 6)
+                    .padding(.trailing, !viewModel.keychainManager.geminiAPIKey.isEmpty ? 30 : 6)
                     
-                    if !keychainManager.geminiAPIKey.isEmpty {
+                    if !viewModel.keychainManager.geminiAPIKey.isEmpty {
                         Button(action: {
-                            keychainManager.geminiAPIKey = ""
+                            viewModel.keychainManager.geminiAPIKey = ""
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(.secondary)
@@ -104,7 +103,7 @@ extension ProjectDetailView {
                 }
                 .overlay(
                     ConcentricRectangle(corners: .fixed(8), isUniform: true)
-                        .stroke(keychainManager.geminiAPIKey.isEmpty ? .red.opacity(0.5) : .mint.opacity(0.3), lineWidth: 2)
+                        .stroke(viewModel.keychainManager.geminiAPIKey.isEmpty ? .red.opacity(0.5) : .mint.opacity(0.3), lineWidth: 2)
                 )
                 
                 Button(action: {
@@ -121,7 +120,9 @@ extension ProjectDetailView {
     
     @ViewBuilder
     private var modelSelectionPicker: some View {
-        Picker("Gemini Model (required):", selection: $selectedGeminiModel) {
+        @Bindable var viewModel = projectViewModel
+        
+        Picker("Gemini Model (required):", selection: $viewModel.selectedGeminiModel) {
             ForEach(GeminiModel.allCases, id: \.self) { model in
                 Text(model.displayName)
                     .tag(model)
@@ -144,13 +145,7 @@ extension ProjectDetailView {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     ForEach(files) { file in
-                        FileRowView(
-                            file: file,
-                            selectedBatchFile: $selectedBatchFile,
-                            selectedGeminiModel: $selectedGeminiModel,
-                            keychainManager: $keychainManager,
-                            runningBatchJob: $runningBatchJob
-                        )
+                        FileRowView(file: file)
                     }
                 }
                 .padding(.vertical, 8)

@@ -9,38 +9,24 @@ import SplitView
 import SwiftUI
 
 struct ProjectDetailSplitView: View {
-    
-    let project: Project
-    
+        
     @StateObject private var hide = SideHolder(.secondary)
-    @State private var selectedBatchFile: BatchFile?
-    @State private var selectedGeminiModel: GeminiModel = .pro
-    @State private var keychainManager: ProjectKeychainManager
-    @State private var runningBatchJob: BatchJob?
+    
+    @State var viewModel: ProjectViewModel
     
     init(project: Project) {
-        self.project = project
-        self._keychainManager = State(initialValue: ProjectKeychainManager(project: project))
-        
-        if let geminiModel = GeminiModel(rawValue: project.geminiModel) {
-            self._selectedGeminiModel = State(initialValue: geminiModel)
-        }
+        viewModel = .init(project: project)
     }
     
     var body: some View {
         Split(
             primary: {
-                ProjectDetailView(
-                    project: project,
-                    selectedBatchFile: $selectedBatchFile,
-                    selectedGeminiModel: $selectedGeminiModel,
-                    keychainManager: $keychainManager,
-                    runningBatchJob: $runningBatchJob
-                )
-                .environmentObject(hide)
+                ProjectDetailView()
+                .environment(viewModel)
             },
             secondary: {
-                RunView(runningBatchJob: $runningBatchJob)
+                RunView()
+                    .environment(viewModel)
             }
         )
         .splitter { Splitter.line() }
@@ -52,11 +38,16 @@ struct ProjectDetailSplitView: View {
                 toggleHideButton
             }
         }
-        .onChange(of: project.id) {
-            keychainManager = ProjectKeychainManager(project: project)
+        .onChange(of: viewModel.hideSideView) {
+            withAnimation {
+                hide.toggle(.secondary)
+            }
         }
-        .onChange(of: selectedGeminiModel) {
-            project.geminiModel = selectedGeminiModel.rawValue
+        .onChange(of: viewModel.project.id) {
+            viewModel.keychainManager = ProjectKeychainManager(project: viewModel.project)
+        }
+        .onChange(of: viewModel.selectedGeminiModel) {
+            viewModel.project.geminiModel = viewModel.selectedGeminiModel.rawValue
         }
     }
 }

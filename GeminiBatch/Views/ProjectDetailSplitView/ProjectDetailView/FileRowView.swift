@@ -13,20 +13,16 @@ struct FileRowView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ToastPresenter.self) private var toastPresenter
-    @EnvironmentObject private var hide: SideHolder
+    @Environment(ProjectViewModel.self) private var viewModel
     
     let file: BatchFile
-    @Binding var selectedBatchFile: BatchFile?
-    @Binding var selectedGeminiModel: GeminiModel
-    @Binding var keychainManager: ProjectKeychainManager
-    @Binding var runningBatchJob: BatchJob?
     
     @State private var batchJobManager: BatchJobManager? = nil
     @State private var isRunning: Bool = false
     @State private var canBeRun: Bool = false
     
     private var runButtonDisabled: Bool {
-        return keychainManager.geminiAPIKey.isEmpty ||
+        return viewModel.keychainManager.geminiAPIKey.isEmpty ||
         !canBeRun
     }
     
@@ -57,24 +53,22 @@ extension FileRowView {
     private var runFileButton: some View {
         Button {
             if let batchJob = file.batchJob {
-                selectedBatchFile = file
+                viewModel.selectedBatchFile = file
                 batchJobManager = BatchJobManager(
-                    geminiAPIKey: keychainManager.geminiAPIKey,
-                    geminiModel: selectedGeminiModel,
+                    geminiAPIKey: viewModel.keychainManager.geminiAPIKey,
+                    geminiModel: viewModel.selectedGeminiModel,
                     batchJobID: batchJob.id,
                     modelContainer: modelContext.container
                 )
-                runningBatchJob = file.batchJob
+                viewModel.runningBatchJob = file.batchJob
+                viewModel.hideSideView = false
                 isRunning = true
-                withAnimation {
-                    hide.side = nil
-                }
                 Task {
                     if let batchJobManager = batchJobManager {
                         do {
                             try await batchJobManager.run()
                             isRunning = false
-                            runningBatchJob = nil
+                            viewModel.runningBatchJob = nil
                         } catch {
                             toastPresenter.showErrorToast(withMessage: error.localizedDescription)
                             isRunning = false
