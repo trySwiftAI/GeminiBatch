@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		FA2509352E4F087900B6DC61 /* AIProxy in Frameworks */ = {isa = PBXBuildFile; productRef = FA2509342E4F087900B6DC61 /* AIProxy */; };
+		FA2509382E4F08A000B6DC61 /* AIProxy in Frameworks */ = {isa = PBXBuildFile; productRef = FA2509372E4F08A000B6DC61 /* AIProxy */; };
 		FA6D08C92E44A2750065C9E0 /* SplitView in Frameworks */ = {isa = PBXBuildFile; productRef = FA6D08C82E44A2750065C9E0 /* SplitView */; };
 		FA6D0B442E44AA4E0065C9E0 /* AIProxy in Frameworks */ = {isa = PBXBuildFile; productRef = FA6D0B432E44AA4E0065C9E0 /* AIProxy */; };
 /* End PBXBuildFile section */
@@ -41,8 +43,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FA2509352E4F087900B6DC61 /* AIProxy in Frameworks */,
 				FA6D08C92E44A2750065C9E0 /* SplitView in Frameworks */,
 				FA6D0B442E44AA4E0065C9E0 /* AIProxy in Frameworks */,
+				FA2509382E4F08A000B6DC61 /* AIProxy in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -87,6 +91,8 @@
 			packageProductDependencies = (
 				FA6D08C82E44A2750065C9E0 /* SplitView */,
 				FA6D0B432E44AA4E0065C9E0 /* AIProxy */,
+				FA2509342E4F087900B6DC61 /* AIProxy */,
+				FA2509372E4F08A000B6DC61 /* AIProxy */,
 			);
 			productName = GeminiBatch;
 			productReference = FA1D9B0D2E287FCC007103B2 /* GeminiBatch.app */;
@@ -118,7 +124,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				FA6D08C72E44A2750065C9E0 /* XCRemoteSwiftPackageReference "SplitView" */,
-				FA6D0B422E44AA4E0065C9E0 /* XCLocalSwiftPackageReference "AIProxySwift" */,
+				FA2509362E4F08A000B6DC61 /* XCRemoteSwiftPackageReference "AIProxySwift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = FA1D9B0E2E287FCC007103B2 /* Products */;
@@ -404,14 +410,15 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		FA6D0B422E44AA4E0065C9E0 /* XCLocalSwiftPackageReference "AIProxySwift" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = AIProxySwift;
-		};
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin XCRemoteSwiftPackageReference section */
+		FA2509362E4F08A000B6DC61 /* XCRemoteSwiftPackageReference "AIProxySwift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/lzell/AIProxySwift.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 		FA6D08C72E44A2750065C9E0 /* XCRemoteSwiftPackageReference "SplitView" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/stevengharris/SplitView.git";
@@ -423,6 +430,15 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		FA2509342E4F087900B6DC61 /* AIProxy */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AIProxy;
+		};
+		FA2509372E4F08A000B6DC61 /* AIProxy */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA2509362E4F08A000B6DC61 /* XCRemoteSwiftPackageReference "AIProxySwift" */;
+			productName = AIProxy;
+		};
 		FA6D08C82E44A2750065C9E0 /* SplitView */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = FA6D08C72E44A2750065C9E0 /* XCRemoteSwiftPackageReference "SplitView" */;
