@@ -18,7 +18,6 @@ struct FileRowView: View {
     let file: BatchFile
     
     @State private var batchJobManager: BatchJobManager? = nil
-    @State private var isRunning: Bool = false
     @State private var canBeRun: Bool = false
     
     private var runButtonDisabled: Bool {
@@ -52,30 +51,12 @@ extension FileRowView {
     @ViewBuilder
     private var runFileButton: some View {
         Button {
-            if let batchJob = file.batchJob {
-                viewModel.selectedBatchFile = file
-                batchJobManager = BatchJobManager(
-                    geminiAPIKey: viewModel.keychainManager.geminiAPIKey,
-                    geminiModel: viewModel.selectedGeminiModel,
-                    batchJobID: batchJob.id,
-                    modelContainer: modelContext.container
-                )
-                viewModel.runningBatchJob = file.batchJob
-                viewModel.hideSideView = false
-                isRunning = true
-                Task {
-                    if let batchJobManager = batchJobManager {
-                        do {
-                            try await batchJobManager.run()
-                            isRunning = false
-                        } catch {
-                            toastPresenter.showErrorToast(withMessage: error.localizedDescription)
-                            isRunning = false
-                        }
-                    }
+            Task {
+                do {
+                    try await viewModel.runJob(forFile: file, inModelContext: modelContext)
+                } catch {
+                    toastPresenter.showErrorToast(withMessage: error.localizedDescription)
                 }
-            } else {
-                toastPresenter.showErrorToast(withMessage: "Oops! The Gemini Model has not been selected. Please select it and try again.")
             }
         } label: {
             Image(systemName: "play")
