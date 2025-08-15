@@ -17,6 +17,10 @@ class BatchJobManager {
     private var batchJobID: PersistentIdentifier
     private var batchJobActor: BatchJobActor
     
+    nonisolated struct BatchResultResponse: Decodable, Sendable {
+      let response: GeminiGenerateContentResponseBody
+    }
+    
     init(
         geminiAPIKey: String,
         geminiModel: GeminiModel,
@@ -260,7 +264,7 @@ extension BatchJobManager {
         
         try await batchJobActor.addBatchJobMessage(
             id: batchJobID,
-            message: "Checking batch job status...",
+            message: "Checking batch job status in 5 minutes...",
             type: .pending
         )
         
@@ -338,14 +342,28 @@ extension BatchJobManager {
             )
 
             let batchResultsData = try await geminiService.downloadBatchResults(responsesFileName: resultsFileName)
-            try await batchJobActor.saveResult(id: batchJobID, data: batchResultsData)
             
-            let resultSize = ByteCountFormatter.string(fromByteCount: Int64(batchResultsData.count), countStyle: .file)
-            try await batchJobActor.addBatchJobMessage(
+            // Save results and parse token counts in parallel
+            async let saveResultTask: Void = batchJobActor.saveResult(id: batchJobID, data: batchResultsData)
+            async let parseTokenCounts = parseTokenCounts(from: batchResultsData)
+                    
+            _ = try await saveResultTask
+            let parsedTokenCounts = await parseTokenCounts
+            
+            try await batchJobActor.updateTokenCounts(
                 id: batchJobID,
-                message: "Results downloaded successfully! File size: \(resultSize). Batch job complete.",
-                type: .success
+                totalTokenCount: parsedTokenCounts.totalTokenCount,
+                thoughtsTokenCount: parsedTokenCounts.thoughtsTokenCount,
+                promptTokenCount: parsedTokenCounts.promptTokenCount,
+                candidatesTokenCount: parsedTokenCounts.candidatesTokenCount
             )
+            
+            let resultSize: String = ByteCountFormatter.string(fromByteCount: Int64(batchResultsData.count), countStyle: .file)
+            try await sendResultsDownloadedMessage(
+                resultFileSize: resultSize,
+                tokenCounts: parsedTokenCounts
+            )
+            
         } catch {
             try await handleError(error, fallbackMessage: "Failed to download batch results")
         }
@@ -411,6 +429,96 @@ extension BatchJobManager {
                 )
             }
         }
+    }
+    
+    nonisolated private func parseTokenCounts(
+        from data: Data
+    ) -> (
+        totalTokenCount: Int?,
+        thoughtsTokenCount: Int?,
+        promptTokenCount: Int?,
+        candidatesTokenCount: Int?
+    ) {
+        var totalTokenCount: Int?
+        var thoughtsTokenCount: Int?
+        var promptTokenCount: Int?
+        var candidatesTokenCount: Int?
+        
+        guard let jsonlString = String(data: data, encoding: .utf8) else {
+            return (nil, nil, nil, nil)
+        }
+        
+        let lines = jsonlString.components(separatedBy: .newlines)
+        let decoder = JSONDecoder()
+        
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedLine.isEmpty else { continue }
+            
+            guard let lineData = trimmedLine.data(using: .utf8) else { continue }
+            
+            do {
+                let response = try decoder.decode(BatchResultResponse.self, from: lineData)
+
+                if let usageMetadata = response.response.usageMetadata {
+                    totalTokenCount = usageMetadata.totalTokenCount ?? nil
+                    thoughtsTokenCount = usageMetadata.thoughtsTokenCount ?? nil
+                    promptTokenCount = usageMetadata.promptTokenCount ?? nil
+                    candidatesTokenCount = usageMetadata.candidatesTokenCount ?? nil
+                    
+                    // Stop parsing if we have all the required metadata
+                    if usageMetadata.totalTokenCount != nil &&
+                       usageMetadata.thoughtsTokenCount != nil &&
+                       usageMetadata.promptTokenCount != nil &&
+                       usageMetadata.candidatesTokenCount != nil {
+                        break
+                    }
+                }
+            } catch {
+                // Continue processing other lines even if one fails to parse
+                continue
+            }
+        }
+        return (totalTokenCount, thoughtsTokenCount, promptTokenCount, candidatesTokenCount)
+    }
+    
+    nonisolated private func sendResultsDownloadedMessage(
+        resultFileSize: String,
+        tokenCounts: (
+            totalTokenCount: Int?,
+            thoughtsTokenCount: Int?,
+            promptTokenCount: Int?,
+            candidatesTokenCount: Int?
+        )
+    ) async throws {
+        guard let totalTokenCount = tokenCounts.totalTokenCount,
+              let thoughtsTokenCount = tokenCounts.thoughtsTokenCount,
+              let promptTokenCount = tokenCounts.promptTokenCount,
+              let candidatesTokenCount = tokenCounts.candidatesTokenCount else {
+            try await batchJobActor
+                .updateBatchJobStatusMessage(
+                    id: batchJobID,
+                    statusMessage: "Results downloaded successfully! File size: \(resultFileSize). Sorry, couldn't extract the number of tokens from the file",
+                    type: .success
+                )
+            return
+        }
+        
+        let message = """
+            Results downloaded successfully! File size: \(resultFileSize).
+            
+            Token usage: 
+            Total - \(totalTokenCount)
+            Input Tokens - \(promptTokenCount)
+            Thought Output Tokens - \(thoughtsTokenCount)
+            Output Tokens - \(candidatesTokenCount)
+            """
+        try await batchJobActor
+            .updateBatchJobStatusMessage(
+                id: batchJobID,
+                statusMessage: message,
+                type: .success
+            )
     }
 }
 

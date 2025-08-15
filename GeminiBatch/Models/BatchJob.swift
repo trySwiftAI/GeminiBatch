@@ -16,6 +16,12 @@ final class BatchJob {
     var jobStatus: BatchJobStatus
     var resultsFileName: String?
     
+    // usage
+    var totalTokenCount: Int?
+    var thoughtsTokenCount: Int?
+    var promptTokenCount: Int?
+    var candidatesTokenCount: Int?
+    
     @Relationship(deleteRule: .cascade)
     var jobStatusMessages: [BatchJobMessage] = []
     

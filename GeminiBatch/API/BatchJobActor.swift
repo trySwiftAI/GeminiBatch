@@ -92,6 +92,25 @@ actor BatchJobActor {
         try modelContext.save()
     }
     
+    func updateTokenCounts(
+        id: PersistentIdentifier,
+        totalTokenCount: Int?,
+        thoughtsTokenCount: Int?,
+        promptTokenCount: Int?,
+        candidatesTokenCount: Int?
+    ) throws {
+        guard let batchJob = modelContext.model(for: id) as? BatchJob else {
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        batchJob.totalTokenCount = totalTokenCount
+        batchJob.thoughtsTokenCount = thoughtsTokenCount
+        batchJob.promptTokenCount = promptTokenCount
+        batchJob.candidatesTokenCount = candidatesTokenCount
+        
+        try modelContext.save()
+    }
+    
     func updateBatchJobStatusMessage(id: PersistentIdentifier, statusMessage: String, type: BatchJobMessageType) throws {
         guard let batchJob = modelContext.model(for: id) as? BatchJob else {
             throw BatchJobError.batchJobCouldNotBeFetched
@@ -147,6 +166,10 @@ actor BatchJobActor {
                     modelContainer: modelContainer
                 )
             )
+        
+        // Update batch job status to indicate file has been downloaded
+        batchJob.jobStatus = .jobFileDownloaded
+        try modelContext.save()
     }
 }
 extension BatchJobActor {
