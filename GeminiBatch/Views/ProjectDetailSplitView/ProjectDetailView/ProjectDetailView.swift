@@ -5,11 +5,13 @@
 //  Created by Natasha Murashev on 7/17/25.
 //
 
+import SwiftData
 import SwiftUI
 
 struct ProjectDetailView: View {
     @Environment(ToastPresenter.self) private var toastPresenter
     @Environment(ProjectViewModel.self) private var projectViewModel
+    @Environment(\.modelContext) private var modelContext
     
     @State private var isAPIKeyVisible: Bool = false
     @FocusState private var isAPIKeyFocused
@@ -36,6 +38,13 @@ struct ProjectDetailView: View {
             .padding(.horizontal)
             .scrollIndicators(.hidden)
             Spacer()
+        }
+        .task {
+            do {
+                try await projectViewModel.continueRunningJobs(inModelContext: modelContext)
+            } catch {
+                toastPresenter.showErrorToast(withMessage: error.localizedDescription)
+            }
         }
         .overlay(alignment: .top) {
             if toastPresenter.isPresented && !toastPresenter.message.isEmpty {

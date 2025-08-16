@@ -24,7 +24,7 @@ final class TaskManager {
     ) {
         runningTasks[batchJobID] = task
         
-        // Clean up completed tasks automatically
+        // Clean up completed tasks automatically on main actor
         Task { @MainActor in
             _ = await task.result
             runningTasks.removeValue(forKey: batchJobID)
@@ -44,18 +44,32 @@ final class TaskManager {
     }
     
     func isTaskRunning(for batchJobID: BatchJobID) -> Bool {
-        runningTasks[batchJobID] != nil
+        if let task = runningTasks[batchJobID] {
+            // Check if task is actually still running
+            if task.isCancelled {
+                runningTasks.removeValue(forKey: batchJobID)
+                return false
+            }
+            return true
+        }
+        return false
     }
     
     var hasRunningTasks: Bool {
-        !runningTasks.isEmpty
+        // Clean up any cancelled tasks
+        runningTasks = runningTasks.filter { !$0.value.isCancelled }
+        return !runningTasks.isEmpty
     }
     
     var runningTaskCount: Int {
-        runningTasks.count
+        // Clean up any cancelled tasks first
+        runningTasks = runningTasks.filter { !$0.value.isCancelled }
+        return runningTasks.count
     }
     
     var runningTaskIDs: [BatchJobID] {
-        Array(runningTasks.keys)
+        // Clean up any cancelled tasks first
+        runningTasks = runningTasks.filter { !$0.value.isCancelled }
+        return Array(runningTasks.keys)
     }
 }

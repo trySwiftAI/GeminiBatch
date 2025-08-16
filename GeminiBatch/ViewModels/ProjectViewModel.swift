@@ -26,6 +26,25 @@ final class ProjectViewModel {
         }
     }
     
+    func continueRunningJobs(inModelContext modelContext: ModelContext) async throws {
+        let batchFiles = project.batchFiles
+        
+        let eligibleFiles = batchFiles.filter { batchFile in
+            guard let batchJob = batchFile.batchJob else { return false }
+            
+            switch batchJob.jobStatus {
+            case .running, .pending, .succeeded:
+                return true
+            default:
+                return false
+            }
+        }
+
+        for batchFile in eligibleFiles {
+            try await runJob(forFile: batchFile, inModelContext: modelContext)
+        }
+    }
+    
     func runJob(
         forFile file: BatchFile,
         inModelContext modelContext: ModelContext
