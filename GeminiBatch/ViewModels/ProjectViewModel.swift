@@ -19,8 +19,6 @@ final class ProjectViewModel {
     var keychainManager: ProjectKeychainManager
     var runningBatchJob: BatchJob?
     
-    private var runningTasks: [PersistentIdentifier: Task<Void, Error>] = [:]
-    
     init(project: Project) {
         self.project = project
         self.keychainManager = ProjectKeychainManager(project: project)
@@ -61,27 +59,22 @@ final class ProjectViewModel {
             try await batchJobManager.run()
         }
         
-        runningTasks[batchJobID] = task
-        
-        Task { @MainActor in
-            _ = await task.result
-            runningTasks.removeValue(forKey: batchJobID)
-        }
+        TaskManager.shared.addTask(for: batchJobID, task: task)
     }
     
     func cancelJob(for batchJobID: PersistentIdentifier) {
-        runningTasks[batchJobID]?.cancel()
-        runningTasks.removeValue(forKey: batchJobID)
+        TaskManager.shared.cancelTask(for: batchJobID)
     }
     
     func cancelAllJobs() {
-        for task in runningTasks.values {
-            task.cancel()
-        }
-        runningTasks.removeAll()
+        TaskManager.shared.cancelAllTasks()
     }
     
     var hasRunningTasks: Bool {
-        !runningTasks.isEmpty
+        TaskManager.shared.hasRunningTasks
+    }
+    
+    func isJobRunning(for batchJobID: PersistentIdentifier) -> Bool {
+        TaskManager.shared.isTaskRunning(for: batchJobID)
     }
 }
