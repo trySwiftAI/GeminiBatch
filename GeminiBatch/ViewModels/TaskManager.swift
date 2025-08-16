@@ -22,6 +22,10 @@ final class TaskManager {
         for batchJobID: BatchJobID,
         task: Task<Void, Error>
     ) {
+        if let existingTask = runningTasks[batchJobID] {
+            existingTask.cancel()
+        }
+        
         runningTasks[batchJobID] = task
         
         // Clean up completed tasks automatically on main actor
@@ -31,7 +35,7 @@ final class TaskManager {
         }
     }
     
-    func cancelTask(for batchJobID: BatchJobID) {
+    func cancelTask(forBatchJobID batchJobID: BatchJobID) {
         runningTasks[batchJobID]?.cancel()
         runningTasks.removeValue(forKey: batchJobID)
     }
@@ -43,9 +47,8 @@ final class TaskManager {
         runningTasks.removeAll()
     }
     
-    func isTaskRunning(for batchJobID: BatchJobID) -> Bool {
+    func isTaskRunning(forBatchJobID batchJobID: BatchJobID) -> Bool {
         if let task = runningTasks[batchJobID] {
-            // Check if task is actually still running
             if task.isCancelled {
                 runningTasks.removeValue(forKey: batchJobID)
                 return false
@@ -53,23 +56,5 @@ final class TaskManager {
             return true
         }
         return false
-    }
-    
-    var hasRunningTasks: Bool {
-        // Clean up any cancelled tasks
-        runningTasks = runningTasks.filter { !$0.value.isCancelled }
-        return !runningTasks.isEmpty
-    }
-    
-    var runningTaskCount: Int {
-        // Clean up any cancelled tasks first
-        runningTasks = runningTasks.filter { !$0.value.isCancelled }
-        return runningTasks.count
-    }
-    
-    var runningTaskIDs: [BatchJobID] {
-        // Clean up any cancelled tasks first
-        runningTasks = runningTasks.filter { !$0.value.isCancelled }
-        return Array(runningTasks.keys)
     }
 }

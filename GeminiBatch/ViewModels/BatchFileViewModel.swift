@@ -22,7 +22,7 @@ class BatchFileViewModel {
     
     func updateStatus(forBatchFile batchFile: BatchFile) {
         if let batchJob = batchFile.batchJob {
-            let isRunning = TaskManager.shared.isTaskRunning(for: batchJob.persistentModelID)
+            let isRunning = TaskManager.shared.isTaskRunning(forBatchJobID: batchJob.persistentModelID)
             if isRunning {
                 batchJobAction = .running
                 return

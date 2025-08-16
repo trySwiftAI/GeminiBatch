@@ -9,6 +9,7 @@ import SwiftData
 import SwiftUI
 
 struct ProjectDetailView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(ToastPresenter.self) private var toastPresenter
     @Environment(ProjectViewModel.self) private var projectViewModel
     @Environment(\.modelContext) private var modelContext
@@ -65,9 +66,24 @@ extension ProjectDetailView {
             
             Spacer()
             
-            Text("Created: \(project.createdAt, style: .date)")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            Button {
+                Task {
+                    do {
+                        try await projectViewModel.runAllJobs(inModelContext: modelContext)
+                    } catch {
+                        toastPresenter.showErrorToast(withMessage: error.localizedDescription)
+                    }
+                }
+            } label: {
+                Label("Run all", systemImage: "play")
+                    .labelStyle(.titleAndIcon)
+            }
+            .buttonStyle(.glassProminent)
+            .tint(.orange.opacity(colorScheme == .dark ? 0.5 : 0.8))
+            .help("Run all files")
+            .scaleEffect(1.2)
+            .disabled(projectViewModel.keychainManager.geminiAPIKey.isEmpty)
+            .padding(.trailing, 20)
         }
         .padding()
     }

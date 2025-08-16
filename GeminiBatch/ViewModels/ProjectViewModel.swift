@@ -70,6 +70,25 @@ final class ProjectViewModel {
         }
     }
     
+    func runAllJobs(inModelContext modelContext: ModelContext) async throws {
+        let batchFiles = project.batchFiles
+        
+        let eligibleFiles = batchFiles.filter { batchFile in
+            guard let batchJob = batchFile.batchJob else { return false }
+            
+            switch batchJob.jobStatus {
+            case .notStarted, .fileUploaded, .running, .pending, .succeeded:
+                return true
+            default:
+                return false
+            }
+        }
+        
+        for file in eligibleFiles {
+            try await runJob(forFile: file, inModelContext: modelContext)
+        }
+    }
+    
     func runJob(
         forFile file: BatchFile,
         inModelContext modelContext: ModelContext
@@ -77,6 +96,9 @@ final class ProjectViewModel {
         let batchJob: BatchJob
         if let fileBatchJob = file.batchJob {
             batchJob = fileBatchJob
+            if TaskManager.shared.isTaskRunning(forBatchJobID: batchJob.persistentModelID) {
+                return
+            }
         } else {
             batchJob = BatchJob(batchFile: file)
             file.batchJob = batchJob
@@ -108,7 +130,7 @@ final class ProjectViewModel {
         inModelContext modelContext: ModelContext
     ) async throws {
         if let existingBatchJob = file.batchJob {
-            TaskManager.shared.cancelTask(for: existingBatchJob.persistentModelID)
+            TaskManager.shared.cancelTask(forBatchJobID: existingBatchJob.persistentModelID)
             modelContext.delete(existingBatchJob)
         }
         try modelContext.save()
@@ -132,23 +154,11 @@ final class ProjectViewModel {
                 
                 TaskManager.shared.addTask(for: batchJob.persistentModelID, task: task)
             default:
-                TaskManager.shared.cancelTask(for: batchJob.persistentModelID)
+                TaskManager.shared.cancelTask(forBatchJobID: batchJob.persistentModelID)
                 batchJob.jobStatus = .cancelled
                 try? modelContext.save()
             }
         }
-    }
-    
-    func cancelAllJobs() {
-        TaskManager.shared.cancelAllTasks()
-    }
-    
-    var hasRunningTasks: Bool {
-        TaskManager.shared.hasRunningTasks
-    }
-    
-    func isJobRunning(for batchJobID: PersistentIdentifier) -> Bool {
-        TaskManager.shared.isTaskRunning(for: batchJobID)
     }
 }
 

@@ -7,8 +7,10 @@
 
 import SplitView
 import SwiftUI
+import SwiftData
 
 struct ProjectDetailSplitView: View {
+    @Environment(\.modelContext) private var modelContext
         
     @StateObject private var hide = SideHolder(.secondary)
     
