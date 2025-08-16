@@ -135,6 +135,8 @@ extension ProjectDetailView {
     
     @ViewBuilder
     private func fileListView(_ files: [BatchFile]) -> some View {
+        @Bindable var viewModel = projectViewModel
+        
         VStack(alignment: .leading) {
             
             Text("JSONL Files (\(files.count))")
@@ -146,6 +148,7 @@ extension ProjectDetailView {
                 LazyVStack(spacing: 12) {
                     ForEach(files) { file in
                         FileRowView(file: file)
+                            .id(file.id)
                     }
                 }
                 .padding(.vertical, 8)

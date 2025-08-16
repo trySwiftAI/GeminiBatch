@@ -21,6 +21,10 @@ struct FileRowView: View {
     @Query private var allBatchFiles: [BatchFile]
     @State private var batchFileViewModel: BatchFileViewModel
     
+    private var isSelected: Bool {
+        projectViewModel.selectedBatchFile?.id == file.id
+    }
+    
     private var observedBatchFile: BatchFile? {
         return allBatchFiles.first { $0.id == file.id }
     }
@@ -45,8 +49,14 @@ struct FileRowView: View {
             }
         }
         .padding()
+        .background(isSelected ? .gray.opacity(0.1) : .clear)
+        .contentShape(Rectangle())
         .cornerRadius(8)
-        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+        .onTapGesture {
+            projectViewModel.selectedBatchFile = observedBatchFile ?? file
+        }
+        .focusable()
+        .focusEffectDisabled()
         .task {
             setupBatchJobIfNeeded()
             batchFileViewModel.updateStatus(forBatchFile: file)
