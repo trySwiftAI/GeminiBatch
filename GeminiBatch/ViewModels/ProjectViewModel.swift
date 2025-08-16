@@ -62,7 +62,17 @@ final class ProjectViewModel {
         TaskManager.shared.addTask(for: batchJobID, task: task)
     }
     
-    func cancelJob(for batchJobID: PersistentIdentifier) {
+    func retryJob(
+        forFile file: BatchFile,
+        inModelContext modelContext: ModelContext
+    ) async throws {
+        let newBatchJob = BatchJob(batchFile: file)
+        file.batchJob = newBatchJob
+        try modelContext.save()
+        try await runJob(forFile: file, inModelContext: modelContext)
+    }
+    
+    func cancelJob(forBatchJobID batchJobID: PersistentIdentifier) {
         TaskManager.shared.cancelTask(for: batchJobID)
     }
     
