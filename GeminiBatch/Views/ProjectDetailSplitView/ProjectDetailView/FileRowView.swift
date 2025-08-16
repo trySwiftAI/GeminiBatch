@@ -97,6 +97,7 @@ extension FileRowView {
         Button {
             Task {
                 do {
+                    projectViewModel.selectedBatchFile = observedBatchFile ?? file
                     try await projectViewModel.runJob(forFile: observedBatchFile ?? file, inModelContext: modelContext)
                 } catch {
                     toastPresenter.showErrorToast(withMessage: error.localizedDescription)
@@ -136,6 +137,7 @@ extension FileRowView {
         Button {
             Task {
                 do {
+                    projectViewModel.selectedBatchFile = observedBatchFile ?? file
                     try await projectViewModel.retryJob(forFile: observedBatchFile ?? file, inModelContext: modelContext)
                 } catch {
                     toastPresenter.showErrorToast(withMessage: error.localizedDescription)

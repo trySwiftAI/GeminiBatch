@@ -40,8 +40,33 @@ final class ProjectViewModel {
             }
         }
 
-        for batchFile in eligibleFiles {
-            try await runJob(forFile: batchFile, inModelContext: modelContext)
+        for file in eligibleFiles {
+            let batchJob: BatchJob
+            if let fileBatchJob = file.batchJob {
+                batchJob = fileBatchJob
+            } else {
+                batchJob = BatchJob(batchFile: file)
+                file.batchJob = batchJob
+                try modelContext.save()
+            }
+            
+            if !keychainManager.geminiAPIKey.isEmpty {
+                let batchJobManager = BatchJobManager(
+                    geminiAPIKey: keychainManager.geminiAPIKey,
+                    geminiModel: selectedGeminiModel,
+                    batchJobID: batchJob.id,
+                    modelContainer: modelContext.container
+                )
+                
+                let batchJobID = batchJob.persistentModelID
+                
+                let task = Task.detached(priority: .background) {
+                    try await batchJobManager.getJobStatus()
+                    try await batchJobManager.run()
+                }
+                
+                TaskManager.shared.addTask(for: batchJobID, task: task)
+            }
         }
     }
     
@@ -49,8 +74,6 @@ final class ProjectViewModel {
         forFile file: BatchFile,
         inModelContext modelContext: ModelContext
     ) async throws {
-        selectedBatchFile = file
-        
         let batchJob: BatchJob
         if let fileBatchJob = file.batchJob {
             batchJob = fileBatchJob
@@ -60,29 +83,30 @@ final class ProjectViewModel {
             try modelContext.save()
         }
         
-        let batchJobManager = BatchJobManager(
-            geminiAPIKey: keychainManager.geminiAPIKey,
-            geminiModel: selectedGeminiModel,
-            batchJobID: batchJob.id,
-            modelContainer: modelContext.container
-        )
-        
-        let batchJobID = batchJob.persistentModelID
-        
-        // Create a background quality task to ensure it continues running
-        let task = Task.detached(priority: .background) {
-            try await batchJobManager.run()
+        if !keychainManager.geminiAPIKey.isEmpty {
+            let batchJobManager = BatchJobManager(
+                geminiAPIKey: keychainManager.geminiAPIKey,
+                geminiModel: selectedGeminiModel,
+                batchJobID: batchJob.id,
+                modelContainer: modelContext.container
+            )
+            
+            let batchJobID = batchJob.persistentModelID
+            
+            let task = Task.detached(priority: .background) {
+                try await batchJobManager.run()
+            }
+            
+            TaskManager.shared.addTask(for: batchJobID, task: task)
+        } else {
+            throw ProjectViewModelError.geminiAPIKeyEmpty
         }
-        
-        TaskManager.shared.addTask(for: batchJobID, task: task)
     }
     
     func retryJob(
         forFile file: BatchFile,
         inModelContext modelContext: ModelContext
     ) async throws {
-        selectedBatchFile = file
-        
         if let existingBatchJob = file.batchJob {
             TaskManager.shared.cancelTask(for: existingBatchJob.persistentModelID)
             modelContext.delete(existingBatchJob)
@@ -125,5 +149,16 @@ final class ProjectViewModel {
     
     func isJobRunning(for batchJobID: PersistentIdentifier) -> Bool {
         TaskManager.shared.isTaskRunning(for: batchJobID)
+    }
+}
+
+enum ProjectViewModelError: Error, LocalizedError {
+    case geminiAPIKeyEmpty
+    
+    var errorDescription: String {
+        switch self {
+        case .geminiAPIKeyEmpty:
+            return "The Gemini API Key is missing. Please update the API key and try again."
+        }
     }
 }

@@ -109,6 +109,44 @@ final class BatchJobManager {
             try await handleError(error, fallbackMessage: "Failed to cancel batch job")
         }
     }
+    
+    nonisolated func getJobStatus() async throws {
+        let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
+        guard let batchJobInfo else {
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: "Failed to fetch batch job information during status check. Please retry.",
+                type: .error
+            )
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        guard let batchJobName = batchJobInfo.geminiJobName else {
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: "No batch job name available for status polling. Please restart the batch job.",
+                type: .error
+            )
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        try await batchJobActor.addBatchJobMessage(
+            id: batchJobID,
+            message: "Checking batch job status...",
+            type: .pending
+        )
+        
+        do {
+            let response = try await geminiService.getBatchJobStatus(batchJobName: batchJobName)
+            
+            try await processJobStatus(
+                fromResponse: response,
+                forBatchJob: batchJobInfo
+            )
+        } catch {
+            try await handleError(error, fallbackMessage: "Failed to get job status")
+        }
+    }
 }
 
 extension BatchJobManager {
@@ -236,45 +274,10 @@ extension BatchJobManager {
         }
     }
     
-    nonisolated private func getJobStatus() async throws {
-        let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
-        guard let batchJobInfo else {
-            try await batchJobActor.addBatchJobMessage(
-                id: batchJobID,
-                message: "Failed to fetch batch job information during status check. Please retry.",
-                type: .error
-            )
-            throw BatchJobError.batchJobCouldNotBeFetched
-        }
-        
-        guard let batchJobName = batchJobInfo.geminiJobName else {
-            try await batchJobActor.addBatchJobMessage(
-                id: batchJobID,
-                message: "No batch job name available for status polling. Please restart the batch job.",
-                type: .error
-            )
-            throw BatchJobError.batchJobCouldNotBeFetched
-        }
-        
-        try await batchJobActor.addBatchJobMessage(
-            id: batchJobID,
-            message: "Checking batch job status...",
-            type: .pending
-        )
-        
-        do {
-            let response = try await geminiService.getBatchJobStatus(batchJobName: batchJobName)
-            
-            try await processJobStatus(
-                fromResponse: response,
-                forBatchJob: batchJobInfo
-            )
-        } catch {
-            try await handleError(error, fallbackMessage: "Failed to get job status")
-        }
-    }
-    
-    nonisolated private func pollBatchJobStatus() async throws {
+    nonisolated private func pollBatchJobStatus(
+        pollAttempts: Int = 60,
+        secondsBetweenPollAttempts: UInt64 = 300
+    ) async throws {
         let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
         guard let batchJobInfo else {
             try await batchJobActor.addBatchJobMessage(
@@ -310,12 +313,30 @@ extension BatchJobManager {
         )
         
         do {
-            let response = try await geminiService.pollForBatchJobComplete(batchJobName: batchJobName)
-                        
-            try await processJobStatus(
-                fromResponse: response,
-                forBatchJob: batchJobInfo
-            )
+            try await Task.sleep(nanoseconds: secondsBetweenPollAttempts * 1_000_000_000)
+            for _ in 0..<pollAttempts {
+                let response = try await geminiService.getBatchJobStatus(
+                    batchJobName: batchJobName
+                )
+                switch response.state {
+                case .pending, .running:
+                    if let responseState = response.state {
+                        let batchJobStatus = BatchJobStatus(from: responseState)
+                        try await batchJobActor.updateBatchJobStatus(id: batchJobID, status: batchJobStatus)
+                    }
+                    try await batchJobActor.addBatchJobMessage(
+                        id: batchJobID,
+                        message: "Job status: \(response.state?.rawValue ?? batchJobInfo.jobStatus.rawValue). Checking batch job status again in 5 minutes...",
+                        type: .pending
+                    )
+                    try await Task.sleep(nanoseconds: secondsBetweenPollAttempts * 1_000_000_000)
+                case .succeeded, .failed, .cancelled, .expired, .unspecified, .none:
+                    try await processJobStatus(
+                        fromResponse: response,
+                        forBatchJob: batchJobInfo
+                    )
+                }
+            }
         } catch {
             try await handleError(error, fallbackMessage: "Failed to get batch job status")
         }
