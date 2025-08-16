@@ -20,27 +20,36 @@ class BatchFileViewModel {
         case downloadFile
     }
     
+    init(batchFile: BatchFile) {
+        self.batchJobAction = determineAction(for: batchFile)
+    }
+    
     func updateStatus(forBatchFile batchFile: BatchFile) {
-        if let batchJob = batchFile.batchJob {
-            let isRunning = TaskManager.shared.isTaskRunning(forBatchJobID: batchJob.persistentModelID)
-            if isRunning {
-                batchJobAction = .running
-                return
-            }
-            switch batchJob.jobStatus {
-            case .notStarted, .fileUploaded, .pending, .running, .succeeded:
-                batchJobAction = .run
-                return
-            case .unspecified, .failed, .cancelled, .expired:
-                batchJobAction = .retry
-                return
-            case .jobFileDownloaded:
-                batchJobAction = .downloadFile
-                return
-            }
-        } else {
-            batchJobAction = .run
-            return
+        let newAction = determineAction(for: batchFile)
+        
+        withAnimation {
+            batchJobAction = newAction
+        }
+    }
+    
+    private func determineAction(for batchFile: BatchFile) -> BatchJobAction {
+        guard let batchJob = batchFile.batchJob else {
+            return .run
+        }
+        
+        // Check if task is currently running
+        if TaskManager.shared.isTaskRunning(forBatchJobID: batchJob.persistentModelID) {
+            return .running
+        }
+        
+        // Determine action based on job status
+        switch batchJob.jobStatus {
+        case .notStarted, .fileUploaded, .pending, .running, .succeeded:
+            return .run
+        case .unspecified, .failed, .cancelled, .expired:
+            return .retry
+        case .jobFileDownloaded:
+            return .downloadFile
         }
     }
 }

@@ -35,7 +35,7 @@ struct FileRowView: View {
     
     init(file: BatchFile) {
         self.file = file
-        self._batchFileViewModel = State(initialValue: BatchFileViewModel())
+        self._batchFileViewModel = State(initialValue: BatchFileViewModel(batchFile: file))
     }
     
     var body: some View {
