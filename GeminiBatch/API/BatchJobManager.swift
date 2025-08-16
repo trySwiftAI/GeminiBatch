@@ -335,6 +335,7 @@ extension BatchJobManager {
                         fromResponse: response,
                         forBatchJob: batchJobInfo
                     )
+                    return
                 }
             }
         } catch {
