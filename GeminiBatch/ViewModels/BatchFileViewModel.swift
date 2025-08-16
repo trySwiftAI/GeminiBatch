@@ -10,10 +10,8 @@ import SwiftUI
 
 @Observable
 class BatchFileViewModel {
-    
-    let batchFile: BatchFile
-    
-    var batchJobAction: BatchJobAction
+        
+    var batchJobAction: BatchJobAction = .run
     
     enum BatchJobAction {
         case run
@@ -22,14 +20,13 @@ class BatchFileViewModel {
         case downloadFile
     }
     
-    init(batchFile: BatchFile) {
-        self.batchFile = batchFile
-        let isRunning = TaskManager.shared.isTaskRunning(for: batchFile.persistentModelID)
-        if isRunning {
-            batchJobAction = .running
-            return
-        }
+    func updateStatus(forBatchFile batchFile: BatchFile) {
         if let batchJob = batchFile.batchJob {
+            let isRunning = TaskManager.shared.isTaskRunning(for: batchJob.persistentModelID)
+            if isRunning {
+                batchJobAction = .running
+                return
+            }
             switch batchJob.jobStatus {
             case .notStarted, .fileUploaded, .pending, .running, .succeeded:
                 batchJobAction = .run

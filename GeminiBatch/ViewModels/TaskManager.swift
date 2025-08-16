@@ -14,7 +14,7 @@ final class TaskManager {
 
     static let shared = TaskManager()
     
-    private var runningTasks: [BatchJobID: Task<Void, Error>] = [:]
+    var runningTasks: [BatchJobID: Task<Void, Error>] = [:]
     
     private init() {}
     

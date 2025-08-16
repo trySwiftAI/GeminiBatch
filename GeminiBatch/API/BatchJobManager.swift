@@ -68,6 +68,47 @@ final class BatchJobManager {
             }
         }
     }
+    
+    nonisolated func cancel() async throws {
+        try await batchJobActor.addBatchJobMessage(
+            id: batchJobID,
+            message: "Cancelling batch job with Gemini...",
+            type: .pending
+        )
+        
+        let batchJobInfo = await batchJobActor.getBatchJobInfo(id: batchJobID)
+        guard let batchJobInfo else {
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: "Failed to fetch batch job information. Please retry the operation.",
+                type: .error
+            )
+            throw BatchJobError.batchJobCouldNotBeFetched
+        }
+        
+        guard let geminiFileName = batchJobInfo.geminiFileName else {
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: "File upload failed - no Gemini file available. Please retry the upload.",
+                type: .error
+            )
+            throw BatchJobError.fileCouldNotBeUploaded
+        }
+        
+        do {
+            let response: GeminiBatchResponseBody = try await geminiService.cancelBatchJob(batchJobName: geminiFileName)
+            
+            try await batchJobActor.updateBatchJobFromResponse(id: batchJobID, response: response)
+            
+            try await batchJobActor.addBatchJobMessage(
+                id: batchJobID,
+                message: "Batch job cancelled successfully. Job Name: \(response.name). Status: \(response.state?.rawValue ?? "pending")",
+                type: .success
+            )
+        } catch {
+            try await handleError(error, fallbackMessage: "Failed to cancel batch job")
+        }
+    }
 }
 
 extension BatchJobManager {

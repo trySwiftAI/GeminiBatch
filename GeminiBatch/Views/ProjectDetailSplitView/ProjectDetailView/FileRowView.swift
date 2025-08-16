@@ -18,7 +18,12 @@ struct FileRowView: View {
     
     let file: BatchFile
     
-    @State var batchFileViewModel: BatchFileViewModel
+    @Query private var allBatchFiles: [BatchFile]
+    @State private var batchFileViewModel: BatchFileViewModel
+    
+    private var observedBatchFile: BatchFile? {
+        return allBatchFiles.first { $0.id == file.id }
+    }
         
     private var actionButtonDisabled: Bool {
         return projectViewModel.keychainManager.geminiAPIKey.isEmpty
@@ -26,7 +31,7 @@ struct FileRowView: View {
     
     init(file: BatchFile) {
         self.file = file
-        self._batchFileViewModel = State(initialValue: BatchFileViewModel(batchFile: file))
+        self._batchFileViewModel = State(initialValue: BatchFileViewModel())
     }
     
     var body: some View {
@@ -34,7 +39,7 @@ struct FileRowView: View {
             HStack {
                 Image(systemName: "doc.text.fill")
                     .foregroundColor(.accentColor)
-                FileDetailView(file: file)
+                FileDetailView(file: observedBatchFile ?? file)
                 Spacer()
                 actionButton
             }
@@ -44,6 +49,18 @@ struct FileRowView: View {
         .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
         .task {
             setupBatchJobIfNeeded()
+            batchFileViewModel.updateStatus(forBatchFile: file)
+        }
+        .onChange(of: TaskManager.shared.runningTasks) {
+            if let observedFile = observedBatchFile {
+                batchFileViewModel.updateStatus(forBatchFile: observedFile)
+            }
+        }
+        .onChange(of: observedBatchFile?.batchJob?.jobStatus) { _, _ in
+            // Update view model when job status changes
+            if let observedFile = observedBatchFile {
+                batchFileViewModel.updateStatus(forBatchFile: observedFile)
+            }
         }
     }
 }
@@ -70,7 +87,7 @@ extension FileRowView {
         Button {
             Task {
                 do {
-                    try await projectViewModel.runJob(forFile: file, inModelContext: modelContext)
+                    try await projectViewModel.runJob(forFile: observedBatchFile ?? file, inModelContext: modelContext)
                 } catch {
                     toastPresenter.showErrorToast(withMessage: error.localizedDescription)
                 }
@@ -91,9 +108,7 @@ extension FileRowView {
     @ViewBuilder
     private var stopBatchJobButton: some View {
         Button {
-            if let batchJob = file.batchJob {
-                projectViewModel.cancelJob(forBatchJobID: batchJob.persistentModelID)
-            }
+            projectViewModel.cancelJob(forFile: observedBatchFile ?? file, inModelContext: modelContext)
         } label: {
             Image(systemName: "stop.circle")
                 .padding(8)
@@ -111,7 +126,7 @@ extension FileRowView {
         Button {
             Task {
                 do {
-                    try await projectViewModel.retryJob(forFile: file, inModelContext: modelContext)
+                    try await projectViewModel.retryJob(forFile: observedBatchFile ?? file, inModelContext: modelContext)
                 } catch {
                     toastPresenter.showErrorToast(withMessage: error.localizedDescription)
                 }
@@ -143,23 +158,25 @@ extension FileRowView {
         .tint(.blue.opacity(colorScheme == .dark ? 0.5 : 0.8))
         .help("Download batch job result file")
         .scaleEffect(1.2)
-        .disabled(file.batchJob?.resultsFileName == nil)
+        .disabled((observedBatchFile ?? file).batchJob?.resultsFileName == nil)
     }
 }
 
 extension FileRowView {
     private func setupBatchJobIfNeeded() {
-        if file.batchJob == nil {
-            let batchJob = BatchJob(batchFile: file)
+        let currentFile = observedBatchFile ?? file
+        if currentFile.batchJob == nil {
+            let batchJob = BatchJob(batchFile: currentFile)
             modelContext.insert(batchJob)
-            file.batchJob = batchJob
+            currentFile.batchJob = batchJob
             try? modelContext.save()
         }
     }
     
     private func downloadResultFile() {
-        guard let resultPath = file.resultPath,
-              let resultsFileName = file.batchJob?.resultsFileName else {
+        let currentFile = observedBatchFile ?? file
+        guard let resultPath = currentFile.resultPath,
+              let resultsFileName = currentFile.batchJob?.resultsFileName else {
             toastPresenter.showErrorToast(withMessage: "No result file available for download")
             return
         }

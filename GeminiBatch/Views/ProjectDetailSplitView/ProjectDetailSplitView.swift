@@ -13,7 +13,7 @@ struct ProjectDetailSplitView: View {
     @StateObject private var hide = SideHolder(.secondary)
     
     @State var viewModel: ProjectViewModel
-    
+        
     init(project: Project) {
         viewModel = .init(project: project)
     }
@@ -38,9 +38,15 @@ struct ProjectDetailSplitView: View {
                 toggleHideButton
             }
         }
-        .onChange(of: viewModel.hideSideView) {
-            withAnimation {
-                hide.toggle(.secondary)
+        .onChange(of: viewModel.selectedBatchFile) {
+            if viewModel.selectedBatchFile == nil {
+                withAnimation {
+                    hide.side = .secondary
+                }
+            } else {
+                withAnimation {
+                    hide.side = nil
+                }
             }
         }
         .onChange(of: viewModel.project.id) {

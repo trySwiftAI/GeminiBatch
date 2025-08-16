@@ -15,7 +15,7 @@ struct RunView: View {
     @Query private var allBatchJobs: [BatchJob]
     
     private var observedBatchJob: BatchJob? {
-        guard let runningBatchJob = projectViewModel.runningBatchJob else { return nil }
+        guard let runningBatchJob = projectViewModel.selectedBatchFile?.batchJob else { return nil }
         return allBatchJobs.first { $0.id == runningBatchJob.id }
     }
     
@@ -265,8 +265,9 @@ struct BatchJobMessageRow: View {
     runningJob.addMessage("Warning: Rate limit encountered, retrying...", type: .error)
     runningJob.addMessage("Completed 300 out of 500 requests", type: .pending)
     
+    batchFile.batchJob = runningJob
     let viewModel = ProjectViewModel(project: project)
-    viewModel.runningBatchJob = runningJob
+    
     return RunView()
         .frame(width: 600, height: 500)
         .environment(viewModel)
@@ -284,9 +285,9 @@ struct BatchJobMessageRow: View {
     let job = BatchJob(batchFile: batchFile)
     job.jobStatus = .pending
     job.startedAt = Date()
+    batchFile.batchJob = job
     
     let viewModel = ProjectViewModel(project: project)
-    viewModel.runningBatchJob = job
     
     return RunView()
         .frame(width: 600, height: 500)
@@ -316,9 +317,9 @@ struct BatchJobMessageRow: View {
     completedJob.addMessage("All 1000 requests completed successfully", type: .success)
     completedJob.addMessage("Results file generated", type: .success)
     completedJob.addMessage("Batch job completed successfully", type: .success)
+    batchFile.batchJob = completedJob
     
     let viewModel = ProjectViewModel(project: project)
-    viewModel.runningBatchJob = completedJob
     
     return RunView()
         .frame(width: 600, height: 500)
@@ -346,9 +347,9 @@ struct BatchJobMessageRow: View {
     failedJob.addMessage("Retrying with corrected format...", type: .pending)
     failedJob.addMessage("Critical error: Unable to process batch file", type: .error)
     failedJob.addMessage("Batch job failed", type: .error)
-    
+
+    batchFile.batchJob = failedJob
     let viewModel = ProjectViewModel(project: project)
-    viewModel.runningBatchJob = failedJob
     
     return RunView()
         .frame(width: 600, height: 500)
