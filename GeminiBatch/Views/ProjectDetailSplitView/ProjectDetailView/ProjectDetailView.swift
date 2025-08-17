@@ -100,7 +100,7 @@ extension ProjectDetailView {
                 .labelStyle(.titleAndIcon)
         }
         .buttonStyle(.glassProminent)
-        .tint(.indigo.opacity(colorScheme == .dark ? 0.5 : 0.8))
+        .tint(.blue.opacity(colorScheme == .dark ? 0.5 : 0.8))
         .help("Download all result files")
         .scaleEffect(1.2)
         .disabled(!viewModel.canDownloadAll)

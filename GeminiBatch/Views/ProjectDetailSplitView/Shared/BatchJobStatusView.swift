@@ -58,13 +58,13 @@ extension BatchJobStatusView {
     private var statusColor: Color {
         switch status {
         case .notStarted:
-            return .blue
+            return .brown
         case .fileUploaded, .pending, .running:
             return .orange
         case .succeeded:
             return .green
         case .jobFileDownloaded:
-            return .indigo
+            return .blue
         case .failed, .cancelled, .expired, .unspecified:
             return .red
         }
