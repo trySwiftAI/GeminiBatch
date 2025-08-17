@@ -9,9 +9,9 @@ import SwiftData
 import SwiftUI
 
 struct ProjectDetailView: View {
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ToastPresenter.self) private var toastPresenter
-    @Environment(\.modelContext) private var modelContext
     
     @State private var isAPIKeyVisible: Bool = false
     @FocusState private var isAPIKeyFocused
@@ -19,12 +19,16 @@ struct ProjectDetailView: View {
     @Binding var selectedBatchFile: BatchFile?
 
     @State private var viewModel: ProjectViewModel
+    @State private var selectedGeminiModel: GeminiModel = .pro
     private let project: Project
     
     init(project: Project, selectedBatchFile: Binding<BatchFile?>) {
         self.project = project
         self._viewModel = State(initialValue: ProjectViewModel(project: project))
         self._selectedBatchFile = selectedBatchFile
+        if let geminiModel = GeminiModel(rawValue: project.geminiModel) {
+            self.selectedGeminiModel = geminiModel
+        }
     }
     
     var body: some View {
@@ -59,6 +63,10 @@ struct ProjectDetailView: View {
             if toastPresenter.isPresented && !toastPresenter.message.isEmpty {
                 ToastView()
             }
+        }
+        .onChange(of: selectedGeminiModel) {
+            project.geminiModel = selectedGeminiModel.rawValue
+            try? modelContext.save()
         }
     }
 }
@@ -151,7 +159,7 @@ extension ProjectDetailView {
     
     @ViewBuilder
     private var modelSelectionPicker: some View {
-        Picker("Gemini Model (required):", selection: $viewModel.selectedGeminiModel) {
+        Picker("Gemini Model (required):", selection: $selectedGeminiModel) {
             ForEach(GeminiModel.allCases, id: \.self) { model in
                 Text(model.displayName)
                     .tag(model)
@@ -174,8 +182,11 @@ extension ProjectDetailView {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     ForEach(files) { file in
-                        FileRowView(file: file, projectViewModel: viewModel, selectedBatchFile: $selectedBatchFile)
-                            .id(file.id)
+                        FileRowView(
+                            file: file,
+                            selectedBatchFile: $selectedBatchFile
+                        )
+                        .id(file.id)
                     }
                 }
                 .padding(.vertical, 8)

@@ -9,13 +9,13 @@
 import Foundation
 import SwiftData
 
-final class BatchJobManager {
+struct BatchJobManager {
     
-    private var geminiAPIKey: String
-    private var geminiService: GeminiService
-    private var geminiModel: GeminiModel
-    private var batchJobID: PersistentIdentifier
-    private var batchJobActor: BatchJobActor
+    private let geminiAPIKey: String
+    private let geminiModel: String
+    private let geminiService: GeminiService
+    private let batchJobID: PersistentIdentifier
+    private let batchJobActor: BatchJobActor
     
     nonisolated struct BatchResultResponse: Decodable, Sendable {
       let response: GeminiGenerateContentResponseBody
@@ -23,7 +23,7 @@ final class BatchJobManager {
     
     init(
         geminiAPIKey: String,
-        geminiModel: GeminiModel,
+        geminiModel: String,
         batchJobID: PersistentIdentifier,
         modelContainer: ModelContainer
     ) {
@@ -34,16 +34,6 @@ final class BatchJobManager {
         self.geminiModel = geminiModel
         self.batchJobID = batchJobID
         self.batchJobActor = BatchJobActor(modelContainer: modelContainer)
-    }
-    
-    func updateGeminiAPIKey(_ geminiAPIKey: String) {
-        geminiService = AIProxy.geminiDirectService(
-                 unprotectedAPIKey: geminiAPIKey
-        )
-    }
-    
-    func updateGeminiModel(_ geminiModel: GeminiModel) {
-        self.geminiModel = geminiModel
     }
     
     nonisolated func run() async throws {
@@ -259,7 +249,7 @@ extension BatchJobManager {
         do {
             let response: GeminiBatchResponseBody = try await geminiService.createBatchJob(
                 body: geminiBatchJobBody,
-                model: geminiModel.rawValue
+                model: geminiModel
             )
             
             try await batchJobActor.updateBatchJobFromResponse(id: batchJobID, response: response)

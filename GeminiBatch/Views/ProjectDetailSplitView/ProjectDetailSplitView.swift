@@ -68,11 +68,10 @@ struct ProjectDetailSplitView: View {
                 }
             }
         }
-        .onChange(of: viewModel.project.id) {
-            viewModel.keychainManager = ProjectKeychainManager(project: viewModel.project)
-        }
-        .onChange(of: viewModel.selectedGeminiModel) {
-            viewModel.project.geminiModel = viewModel.selectedGeminiModel.rawValue
+        .onChange(of: project) {
+            if let project = project {
+                viewModel = ProjectViewModel(project: project)
+            }
         }
     }
 }

@@ -20,7 +20,12 @@ class BatchFileViewModel {
         case downloadFile
     }
     
+    private let file: BatchFile
+    let keychainManager: ProjectKeychainManager
+    
     init(batchFile: BatchFile) {
+        self.file = batchFile
+        self.keychainManager = ProjectKeychainManager(project: batchFile.project)
         self.batchJobAction = determineAction(for: batchFile)
     }
     
@@ -31,6 +36,78 @@ class BatchFileViewModel {
             batchJobAction = newAction
         }
     }
+    
+    func runJob(
+        inModelContext modelContext: ModelContext
+    ) async throws {
+        let batchJob: BatchJob
+        if let fileBatchJob = file.batchJob {
+            batchJob = fileBatchJob
+            if TaskManager.shared.isTaskRunning(forBatchJobID: batchJob.persistentModelID) {
+                return
+            }
+        } else {
+            batchJob = BatchJob(batchFile: file)
+            file.batchJob = batchJob
+            try modelContext.save()
+        }
+        
+        if !keychainManager.geminiAPIKey.isEmpty {
+            let batchJobManager = BatchJobManager(
+                geminiAPIKey: keychainManager.geminiAPIKey,
+                geminiModel: file.project.geminiModel,
+                batchJobID: batchJob.id,
+                modelContainer: modelContext.container
+            )
+            
+            let batchJobID = batchJob.persistentModelID
+            
+            let task = Task.detached(priority: .background) {
+                try await batchJobManager.run()
+            }
+            
+            TaskManager.shared.addTask(for: batchJobID, task: task)
+        } else {
+            throw ProjectViewModelError.geminiAPIKeyEmpty
+        }
+    }
+    
+    func retryJob(
+        inModelContext modelContext: ModelContext
+    ) async throws {
+        if let existingBatchJob = file.batchJob {
+            TaskManager.shared.cancelTask(forBatchJobID: existingBatchJob.persistentModelID)
+            modelContext.delete(existingBatchJob)
+        }
+        try modelContext.save()
+        try await runJob(inModelContext: modelContext)
+    }
+    
+    func cancelJob(inModelContext modelContext: ModelContext) {
+        if let batchJob = file.batchJob {
+            switch batchJob.jobStatus {
+            case .pending, .running:
+                let batchJobManager = BatchJobManager(
+                    geminiAPIKey: keychainManager.geminiAPIKey,
+                    geminiModel: file.project.geminiModel,
+                    batchJobID: batchJob.id,
+                    modelContainer: modelContext.container
+                )
+                let task = Task.detached(priority: .background) {
+                    try await batchJobManager.cancel()
+                }
+                
+                TaskManager.shared.addTask(for: batchJob.persistentModelID, task: task)
+            default:
+                TaskManager.shared.cancelTask(forBatchJobID: batchJob.persistentModelID)
+                batchJob.jobStatus = .cancelled
+                try? modelContext.save()
+            }
+        }
+    }
+}
+
+extension BatchFileViewModel {
     
     private func determineAction(for batchFile: BatchFile) -> BatchJobAction {
         guard let batchJob = batchFile.batchJob else {

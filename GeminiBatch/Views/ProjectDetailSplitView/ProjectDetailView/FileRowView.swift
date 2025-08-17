@@ -17,8 +17,7 @@ struct FileRowView: View {
     
     let file: BatchFile
     
-    @State private var batchFileViewModel: BatchFileViewModel
-    private let projectViewModel: ProjectViewModel
+    @State private var viewModel: BatchFileViewModel
     @Binding private var selectedBatchFile: BatchFile?
     
     private var isSelected: Bool {
@@ -26,18 +25,16 @@ struct FileRowView: View {
     }
         
     private var actionButtonDisabled: Bool {
-        return projectViewModel.keychainManager.geminiAPIKey.isEmpty
+        return viewModel.keychainManager.geminiAPIKey.isEmpty
     }
     
     init(
         file: BatchFile,
-        projectViewModel: ProjectViewModel,
         selectedBatchFile: Binding<BatchFile?>
     ) {
         self.file = file
-        self.projectViewModel = projectViewModel
         self._selectedBatchFile = selectedBatchFile
-        self._batchFileViewModel = State(initialValue: BatchFileViewModel(batchFile: file))
+        self._viewModel = State(initialValue: BatchFileViewModel(batchFile: file))
     }
     
     var body: some View {
@@ -61,14 +58,14 @@ struct FileRowView: View {
         .focusEffectDisabled()
         .task {
             setupBatchJobIfNeeded()
-            batchFileViewModel.updateStatus(forBatchFile: file)
+            viewModel.updateStatus(forBatchFile: file)
         }
         .onChange(of: TaskManager.shared.runningTasks) {
-            batchFileViewModel.updateStatus(forBatchFile: file)
+            viewModel.updateStatus(forBatchFile: file)
             
         }
         .onChange(of: file.batchJob?.jobStatus) {
-            batchFileViewModel.updateStatus(forBatchFile: file)
+            viewModel.updateStatus(forBatchFile: file)
         }
     }
 }
@@ -78,7 +75,7 @@ extension FileRowView {
     
     @ViewBuilder
     private var actionButton: some View {
-        switch batchFileViewModel.batchJobAction {
+        switch viewModel.batchJobAction {
         case .run:
             runBatchJobButton
         case .running:
@@ -96,7 +93,7 @@ extension FileRowView {
             Task {
                 do {
                     selectedBatchFile = file
-                    try await projectViewModel.runJob(forFile: file, inModelContext: modelContext)
+                    try await viewModel.runJob(inModelContext: modelContext)
                 } catch {
                     toastPresenter.showErrorToast(withMessage: error.localizedDescription)
                 }
@@ -118,7 +115,7 @@ extension FileRowView {
     private var stopBatchJobButton: some View {
         Button {
             selectedBatchFile = file
-            projectViewModel.cancelJob(forFile: file, inModelContext: modelContext)
+            viewModel.cancelJob(inModelContext: modelContext)
         } label: {
             Image(systemName: "stop.circle")
                 .padding(8)
@@ -137,7 +134,7 @@ extension FileRowView {
             Task {
                 do {
                     selectedBatchFile = file
-                    try await projectViewModel.retryJob(forFile: file, inModelContext: modelContext)
+                    try await viewModel.retryJob(inModelContext: modelContext)
                 } catch {
                     toastPresenter.showErrorToast(withMessage: error.localizedDescription)
                 }
