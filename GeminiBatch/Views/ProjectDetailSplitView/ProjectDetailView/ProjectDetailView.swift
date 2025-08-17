@@ -82,26 +82,49 @@ extension ProjectDetailView {
             
             Spacer()
             
-            Button {
-                Task {
-                    do {
-                        try await viewModel.runAllJobs(inModelContext: modelContext)
-                    } catch {
-                        toastPresenter.showErrorToast(withMessage: error.localizedDescription)
-                    }
-                }
-            } label: {
-                Label("Run all", systemImage: "play")
-                    .labelStyle(.titleAndIcon)
+            HStack(spacing: 30) {
+                downloadAllButton
+                runAllButton
             }
-            .buttonStyle(.glassProminent)
-            .tint(.orange.opacity(colorScheme == .dark ? 0.5 : 0.8))
-            .help("Run all files")
-            .scaleEffect(1.2)
-            .disabled(!viewModel.canRunAll)
             .padding(.trailing, 20)
         }
         .padding()
+    }
+    
+    @ViewBuilder
+    private var downloadAllButton: some View {
+        Button {
+            downloadAllResultFiles()
+        } label: {
+            Label("Download all", systemImage: "square.and.arrow.down")
+                .labelStyle(.titleAndIcon)
+        }
+        .buttonStyle(.glassProminent)
+        .tint(.blue.opacity(colorScheme == .dark ? 0.5 : 0.8))
+        .help("Download all result files")
+        .scaleEffect(1.2)
+        .disabled(!viewModel.canDownloadAll)
+    }
+    
+    @ViewBuilder
+    private var runAllButton: some View {
+        Button {
+            Task {
+                do {
+                    try await viewModel.runAllJobs(inModelContext: modelContext)
+                } catch {
+                    toastPresenter.showErrorToast(withMessage: error.localizedDescription)
+                }
+            }
+        } label: {
+            Label("Run all", systemImage: "play")
+                .labelStyle(.titleAndIcon)
+        }
+        .buttonStyle(.glassProminent)
+        .tint(.orange.opacity(colorScheme == .dark ? 0.5 : 0.8))
+        .help("Run all files")
+        .scaleEffect(1.2)
+        .disabled(!viewModel.canRunAll)
     }
     
     @ViewBuilder
@@ -193,6 +216,86 @@ extension ProjectDetailView {
             }
             
             Divider()
+        }
+    }
+}
+
+// MARK: - Download All Files
+extension ProjectDetailView {
+    
+    private func downloadAllResultFiles() {
+        let filesToDownload = project.batchFiles.filter { $0.resultPath != nil }
+        
+        guard !filesToDownload.isEmpty else {
+            toastPresenter.showErrorToast(withMessage: "No result files available for download")
+            return
+        }
+        
+        // Use NSOpenPanel configured for folder selection
+        let folderPanel = NSOpenPanel()
+        folderPanel.title = "Choose Download Location"
+        folderPanel.prompt = "Choose Folder"
+        folderPanel.canChooseDirectories = true
+        folderPanel.canChooseFiles = false
+        folderPanel.canCreateDirectories = true
+        folderPanel.allowsMultipleSelection = false
+        
+        folderPanel.begin { response in
+            if response == .OK, let destinationFolder = folderPanel.url {
+                Task {
+                    await self.copyAllFilesToDestination(filesToDownload, destinationFolder: destinationFolder)
+                }
+            }
+        }
+    }
+    
+    private func copyAllFilesToDestination(_ files: [BatchFile], destinationFolder: URL) async {
+        var successCount = 0
+        var errorCount = 0
+        var errors: [String] = []
+        
+        for file in files {
+            guard let resultPath = file.resultPath else {
+                errorCount += 1
+                errors.append("No result file for \(file.name)")
+                continue
+            }
+            
+            let sourceURL = URL(fileURLWithPath: resultPath)
+            let destinationURL = destinationFolder.appendingPathComponent(sourceURL.lastPathComponent)
+            
+            // Check if source file exists
+            guard FileManager.default.fileExists(atPath: resultPath) else {
+                errorCount += 1
+                errors.append("Result file not found for \(file.name)")
+                continue
+            }
+            
+            do {
+                // Remove existing file if it exists
+                if FileManager.default.fileExists(atPath: destinationURL.path) {
+                    try FileManager.default.removeItem(at: destinationURL)
+                }
+                
+                // Copy the file
+                try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
+                successCount += 1
+            } catch {
+                errorCount += 1
+                errors.append("Failed to copy \(file.name): \(error.localizedDescription)")
+            }
+        }
+        
+        // Show results on main thread
+        await MainActor.run {
+            if successCount > 0 && errorCount == 0 {
+                toastPresenter.showSuccessToast(withMessage: "Successfully downloaded \(successCount) result files")
+            } else if successCount > 0 && errorCount > 0 {
+                toastPresenter.showErrorToast(withMessage: "Downloaded \(successCount) files, \(errorCount) failed")
+            } else {
+                let errorMessage = errors.isEmpty ? "Failed to download any files" : errors.joined(separator: "; ")
+                toastPresenter.showErrorToast(withMessage: errorMessage)
+            }
         }
     }
 }

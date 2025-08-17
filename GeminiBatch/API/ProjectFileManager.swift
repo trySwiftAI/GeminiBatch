@@ -125,7 +125,7 @@ actor ProjectFileManager {
                 // Create project directory if needed
                 try self.createProjectDirectoryIfNeeded()
                 
-                let fileName = "result_\(batchFileName).jsonl"
+                let fileName = "result_\(batchFileName)"
                 let destinationURL = self.projectDirectory.appendingPathComponent(fileName)
                 
                 // Remove existing result file if it exists

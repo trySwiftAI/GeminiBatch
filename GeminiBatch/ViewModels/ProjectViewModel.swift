@@ -38,6 +38,14 @@ struct ProjectViewModel {
         }
     }
     
+    var canDownloadAll: Bool {
+        let filesToDownload = project.batchFiles.filter { $0.resultPath != nil }
+        if !filesToDownload.isEmpty {
+            return true
+        }
+        return false
+    }
+    
     func continueRunningJobs(inModelContext modelContext: ModelContext) async throws {
         let batchFiles = project.batchFiles
         
