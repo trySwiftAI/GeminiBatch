@@ -10,19 +10,18 @@ import SwiftData
 
 struct RunView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(ProjectViewModel.self) private var projectViewModel
-    
     @Query private var allBatchJobs: [BatchJob]
     
-    private var observedBatchJob: BatchJob? {
-        guard let runningBatchJob = projectViewModel.selectedBatchFile?.batchJob else { return nil }
-        return allBatchJobs.first { $0.id == runningBatchJob.id }
+    private var batchJob: BatchJob? {
+        allBatchJobs.first
+    }
+    
+    init(batchFileID: UUID) {
+        self._allBatchJobs = Query(filter: #Predicate { $0.batchFile.id == batchFileID })
     }
     
     var body: some View {
-        @Bindable var viewModel = projectViewModel
-        
-        if let batchJob = observedBatchJob {
+        if let batchJob = batchJob {
             VStack(spacing: 0) {
                 headerSection(for: batchJob)
                 Divider()
@@ -241,117 +240,117 @@ struct BatchJobMessageRow: View {
     }
 }
 
-// MARK: - Preview
-#Preview("Running Job with Messages") {
-    let project = Project(name: "Sample Project")
-    let batchFile = BatchFile(
-        name: "batch_file",
-        originalURL: URL(string: "http://")!,
-        storedURL: URL(string: "http://")!,
-        fileSize: 400,
-        project: project
-    )
-    
-    let runningJob = BatchJob(batchFile: batchFile)
-    runningJob.geminiJobName = "sample_batch_job_123"
-    runningJob.jobStatus = .running
-    runningJob.startedAt = Date().addingTimeInterval(-3600) // Started 1 hour ago
-    
-    // Add sample messages
-    runningJob.addMessage("Batch job file uploaded successfully", type: .success)
-    runningJob.addMessage("Job submitted to Gemini API", type: .success)
-    runningJob.addMessage("Processing batch requests...", type: .pending)
-    runningJob.addMessage("Completed 150 out of 500 requests", type: .pending)
-    runningJob.addMessage("Warning: Rate limit encountered, retrying...", type: .error)
-    runningJob.addMessage("Completed 300 out of 500 requests", type: .pending)
-    
-    batchFile.batchJob = runningJob
-    let viewModel = ProjectViewModel(project: project)
-    
-    return RunView()
-        .frame(width: 600, height: 500)
-        .environment(viewModel)
-}
-
-#Preview("Job with No Messages") {
-    let project = Project(name: "Sample Project")
-    let batchFile = BatchFile(
-        name: "batch_file",
-        originalURL: URL(string: "http://")!,
-        storedURL: URL(string: "http://")!,
-        fileSize: 400,
-        project: project
-    )
-    let job = BatchJob(batchFile: batchFile)
-    job.jobStatus = .pending
-    job.startedAt = Date()
-    batchFile.batchJob = job
-    
-    let viewModel = ProjectViewModel(project: project)
-    
-    return RunView()
-        .frame(width: 600, height: 500)
-        .environment(viewModel)
-}
-
-#Preview("Completed Job") {
-    let project = Project(name: "Sample Project")
-    let batchFile = BatchFile(
-        name: "batch_file",
-        originalURL: URL(string: "http://")!,
-        storedURL: URL(string: "http://")!,
-        fileSize: 400,
-        project: project
-    )
-    let completedJob = BatchJob(batchFile: batchFile)
-    completedJob.geminiJobName = "completed_batch_job_456"
-    completedJob.jobStatus = .succeeded
-    completedJob.startedAt = Date().addingTimeInterval(-7200) // Started 2 hours ago
-    
-    // Add completion messages
-    completedJob.addMessage("Batch job started", type: .success)
-    completedJob.addMessage("Processing 1000 requests", type: .pending)
-    completedJob.addMessage("Completed 250 requests", type: .pending)
-    completedJob.addMessage("Completed 500 requests", type: .pending)
-    completedJob.addMessage("Completed 750 requests", type: .pending)
-    completedJob.addMessage("All 1000 requests completed successfully", type: .success)
-    completedJob.addMessage("Results file generated", type: .success)
-    completedJob.addMessage("Batch job completed successfully", type: .success)
-    batchFile.batchJob = completedJob
-    
-    let viewModel = ProjectViewModel(project: project)
-    
-    return RunView()
-        .frame(width: 600, height: 500)
-        .environment(viewModel)
-}
-
-#Preview("Failed Job") {
-    let project = Project(name: "Sample Project")
-    let batchFile = BatchFile(
-        name: "batch_file",
-        originalURL: URL(string: "http://")!,
-        storedURL: URL(string: "http://")!,
-        fileSize: 400,
-        project: project
-    )
-    let failedJob = BatchJob(batchFile: batchFile)
-    failedJob.geminiJobName = "failed_batch_job_789"
-    failedJob.jobStatus = .failed
-    failedJob.startedAt = Date().addingTimeInterval(-1800) // Started 30 minutes ago
-    
-    // Add failure messages
-    failedJob.addMessage("Batch job started", type: .success)
-    failedJob.addMessage("Processing requests...", type: .pending)
-    failedJob.addMessage("Error: Invalid request format detected", type: .error)
-    failedJob.addMessage("Retrying with corrected format...", type: .pending)
-    failedJob.addMessage("Critical error: Unable to process batch file", type: .error)
-    failedJob.addMessage("Batch job failed", type: .error)
-
-    batchFile.batchJob = failedJob
-    let viewModel = ProjectViewModel(project: project)
-    
-    return RunView()
-        .frame(width: 600, height: 500)
-        .environment(viewModel)
-}
+//// MARK: - Preview
+//#Preview("Running Job with Messages") {
+//    let project = Project(name: "Sample Project")
+//    let batchFile = BatchFile(
+//        name: "batch_file",
+//        originalURL: URL(string: "http://")!,
+//        storedURL: URL(string: "http://")!,
+//        fileSize: 400,
+//        project: project
+//    )
+//    
+//    let runningJob = BatchJob(batchFile: batchFile)
+//    runningJob.geminiJobName = "sample_batch_job_123"
+//    runningJob.jobStatus = .running
+//    runningJob.startedAt = Date().addingTimeInterval(-3600) // Started 1 hour ago
+//    
+//    // Add sample messages
+//    runningJob.addMessage("Batch job file uploaded successfully", type: .success)
+//    runningJob.addMessage("Job submitted to Gemini API", type: .success)
+//    runningJob.addMessage("Processing batch requests...", type: .pending)
+//    runningJob.addMessage("Completed 150 out of 500 requests", type: .pending)
+//    runningJob.addMessage("Warning: Rate limit encountered, retrying...", type: .error)
+//    runningJob.addMessage("Completed 300 out of 500 requests", type: .pending)
+//    
+//    batchFile.batchJob = runningJob
+//    let viewModel = ProjectViewModel(project: project)
+//    
+//    return RunView()
+//        .frame(width: 600, height: 500)
+//        .environment(viewModel)
+//}
+//
+//#Preview("Job with No Messages") {
+//    let project = Project(name: "Sample Project")
+//    let batchFile = BatchFile(
+//        name: "batch_file",
+//        originalURL: URL(string: "http://")!,
+//        storedURL: URL(string: "http://")!,
+//        fileSize: 400,
+//        project: project
+//    )
+//    let job = BatchJob(batchFile: batchFile)
+//    job.jobStatus = .pending
+//    job.startedAt = Date()
+//    batchFile.batchJob = job
+//    
+//    let viewModel = ProjectViewModel(project: project)
+//    
+//    return RunView()
+//        .frame(width: 600, height: 500)
+//        .environment(viewModel)
+//}
+//
+//#Preview("Completed Job") {
+//    let project = Project(name: "Sample Project")
+//    let batchFile = BatchFile(
+//        name: "batch_file",
+//        originalURL: URL(string: "http://")!,
+//        storedURL: URL(string: "http://")!,
+//        fileSize: 400,
+//        project: project
+//    )
+//    let completedJob = BatchJob(batchFile: batchFile)
+//    completedJob.geminiJobName = "completed_batch_job_456"
+//    completedJob.jobStatus = .succeeded
+//    completedJob.startedAt = Date().addingTimeInterval(-7200) // Started 2 hours ago
+//    
+//    // Add completion messages
+//    completedJob.addMessage("Batch job started", type: .success)
+//    completedJob.addMessage("Processing 1000 requests", type: .pending)
+//    completedJob.addMessage("Completed 250 requests", type: .pending)
+//    completedJob.addMessage("Completed 500 requests", type: .pending)
+//    completedJob.addMessage("Completed 750 requests", type: .pending)
+//    completedJob.addMessage("All 1000 requests completed successfully", type: .success)
+//    completedJob.addMessage("Results file generated", type: .success)
+//    completedJob.addMessage("Batch job completed successfully", type: .success)
+//    batchFile.batchJob = completedJob
+//    
+//    let viewModel = ProjectViewModel(project: project)
+//    
+//    return RunView()
+//        .frame(width: 600, height: 500)
+//        .environment(viewModel)
+//}
+//
+//#Preview("Failed Job") {
+//    let project = Project(name: "Sample Project")
+//    let batchFile = BatchFile(
+//        name: "batch_file",
+//        originalURL: URL(string: "http://")!,
+//        storedURL: URL(string: "http://")!,
+//        fileSize: 400,
+//        project: project
+//    )
+//    let failedJob = BatchJob(batchFile: batchFile)
+//    failedJob.geminiJobName = "failed_batch_job_789"
+//    failedJob.jobStatus = .failed
+//    failedJob.startedAt = Date().addingTimeInterval(-1800) // Started 30 minutes ago
+//    
+//    // Add failure messages
+//    failedJob.addMessage("Batch job started", type: .success)
+//    failedJob.addMessage("Processing requests...", type: .pending)
+//    failedJob.addMessage("Error: Invalid request format detected", type: .error)
+//    failedJob.addMessage("Retrying with corrected format...", type: .pending)
+//    failedJob.addMessage("Critical error: Unable to process batch file", type: .error)
+//    failedJob.addMessage("Batch job failed", type: .error)
+//
+//    batchFile.batchJob = failedJob
+//    let viewModel = ProjectViewModel(project: project)
+//    
+//    return RunView()
+//        .frame(width: 600, height: 500)
+//        .environment(viewModel)
+//}

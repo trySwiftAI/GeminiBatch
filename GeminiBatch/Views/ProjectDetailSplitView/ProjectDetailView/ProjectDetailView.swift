@@ -11,47 +11,34 @@ import SwiftUI
 struct ProjectDetailView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ToastPresenter.self) private var toastPresenter
-    @Environment(ProjectViewModel.self) private var projectViewModel
     @Environment(\.modelContext) private var modelContext
     
     @State private var isAPIKeyVisible: Bool = false
     @FocusState private var isAPIKeyFocused
     
-    private var canRunAll: Bool {
-        if projectViewModel.keychainManager.geminiAPIKey.isEmpty {
-            return false
-        }
-        
-        let project = projectViewModel.project
-        let batchJobs = project.batchFiles.compactMap(\.batchJob)
-        
-        return batchJobs.contains { batchJob in
-            switch batchJob.jobStatus {
-            case .notStarted, .fileUploaded, .running, .pending, .succeeded:
-                if TaskManager.shared.isTaskRunning(forBatchJobID: batchJob.persistentModelID) {
-                    return false
-                }
-                return true
-            default:
-                return false
-            }
-        }
+    @Binding var selectedBatchFile: BatchFile?
+
+    @State private var viewModel: ProjectViewModel
+    private let project: Project
+    
+    init(project: Project, selectedBatchFile: Binding<BatchFile?>) {
+        self.project = project
+        self._viewModel = State(initialValue: ProjectViewModel(project: project))
+        self._selectedBatchFile = selectedBatchFile
     }
     
     var body: some View {
-        @Bindable var viewModel = projectViewModel
-        
         VStack(spacing: 20) {
-            projectHeader(viewModel.project)
+            projectHeader(project)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     apiKeySection
                     modelSelectionPicker
-                    if !viewModel.project.batchFiles.isEmpty {
-                        fileListView(viewModel.project.batchFiles)
+                    if !project.batchFiles.isEmpty {
+                        fileListView(project.batchFiles)
                     }
-                    FileUploadView(project: viewModel.project)
+                    FileUploadView(project: project)
                         .padding()
                 }
                 .frame(maxWidth: .infinity)
@@ -63,7 +50,7 @@ struct ProjectDetailView: View {
         }
         .task {
             do {
-                try await projectViewModel.continueRunningJobs(inModelContext: modelContext)
+                try await viewModel.continueRunningJobs(inModelContext: modelContext)
             } catch {
                 toastPresenter.showErrorToast(withMessage: error.localizedDescription)
             }
@@ -90,7 +77,7 @@ extension ProjectDetailView {
             Button {
                 Task {
                     do {
-                        try await projectViewModel.runAllJobs(inModelContext: modelContext)
+                        try await viewModel.runAllJobs(inModelContext: modelContext)
                     } catch {
                         toastPresenter.showErrorToast(withMessage: error.localizedDescription)
                     }
@@ -103,7 +90,7 @@ extension ProjectDetailView {
             .tint(.orange.opacity(colorScheme == .dark ? 0.5 : 0.8))
             .help("Run all files")
             .scaleEffect(1.2)
-            .disabled(!canRunAll)
+            .disabled(!viewModel.canRunAll)
             .padding(.trailing, 20)
         }
         .padding()
@@ -111,8 +98,6 @@ extension ProjectDetailView {
     
     @ViewBuilder
     private var apiKeySection: some View {
-        @Bindable var viewModel = projectViewModel
-        
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("The Gemini API key for this project (required)")
@@ -166,8 +151,6 @@ extension ProjectDetailView {
     
     @ViewBuilder
     private var modelSelectionPicker: some View {
-        @Bindable var viewModel = projectViewModel
-        
         Picker("Gemini Model (required):", selection: $viewModel.selectedGeminiModel) {
             ForEach(GeminiModel.allCases, id: \.self) { model in
                 Text(model.displayName)
@@ -181,8 +164,6 @@ extension ProjectDetailView {
     
     @ViewBuilder
     private func fileListView(_ files: [BatchFile]) -> some View {
-        @Bindable var viewModel = projectViewModel
-        
         VStack(alignment: .leading) {
             
             Text("JSONL Files (\(files.count))")
@@ -193,7 +174,7 @@ extension ProjectDetailView {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     ForEach(files) { file in
-                        FileRowView(file: file)
+                        FileRowView(file: file, projectViewModel: viewModel, selectedBatchFile: $selectedBatchFile)
                             .id(file.id)
                     }
                 }

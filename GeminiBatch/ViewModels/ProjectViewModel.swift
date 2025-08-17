@@ -13,7 +13,6 @@ final class ProjectViewModel {
     
     let project: Project
     
-    var selectedBatchFile: BatchFile?
     var selectedGeminiModel: GeminiModel = .pro
     var keychainManager: ProjectKeychainManager
     
@@ -23,6 +22,26 @@ final class ProjectViewModel {
         
         if let geminiModel = GeminiModel(rawValue: project.geminiModel) {
             self.selectedGeminiModel = geminiModel
+        }
+    }
+    
+    var canRunAll: Bool {
+        if keychainManager.geminiAPIKey.isEmpty {
+            return false
+        }
+        
+        let batchJobs = project.batchFiles.compactMap(\.batchJob)
+        
+        return batchJobs.contains { batchJob in
+            switch batchJob.jobStatus {
+            case .notStarted, .fileUploaded, .running, .pending, .succeeded:
+                if TaskManager.shared.isTaskRunning(forBatchJobID: batchJob.persistentModelID) {
+                    return false
+                }
+                return true
+            default:
+                return false
+            }
         }
     }
     
@@ -138,7 +157,6 @@ final class ProjectViewModel {
     }
     
     func cancelJob(forFile file: BatchFile, inModelContext modelContext: ModelContext) {
-        selectedBatchFile = file
         if let batchJob = file.batchJob {
             switch batchJob.jobStatus {
             case .pending, .running:

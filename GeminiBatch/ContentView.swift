@@ -26,8 +26,3 @@ struct ContentView: View {
         .navigationSplitViewStyle(.balanced)
     }
 }
-
-#Preview {
-    ContentView()
-        .modelContainer(for: Project.self, inMemory: true)
-}

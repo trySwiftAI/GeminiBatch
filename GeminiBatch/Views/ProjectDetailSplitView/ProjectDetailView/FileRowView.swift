@@ -14,27 +14,29 @@ struct FileRowView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ToastPresenter.self) private var toastPresenter
-    @Environment(ProjectViewModel.self) private var projectViewModel
     
     let file: BatchFile
     
-    @Query private var allBatchFiles: [BatchFile]
     @State private var batchFileViewModel: BatchFileViewModel
+    private let projectViewModel: ProjectViewModel
+    @Binding private var selectedBatchFile: BatchFile?
     
     private var isSelected: Bool {
-        projectViewModel.selectedBatchFile?.id == file.id
-    }
-    
-    private var observedBatchFile: BatchFile? {
-        return allBatchFiles.first { $0.id == file.id }
+        selectedBatchFile?.id == file.id
     }
         
     private var actionButtonDisabled: Bool {
         return projectViewModel.keychainManager.geminiAPIKey.isEmpty
     }
     
-    init(file: BatchFile) {
+    init(
+        file: BatchFile,
+        projectViewModel: ProjectViewModel,
+        selectedBatchFile: Binding<BatchFile?>
+    ) {
         self.file = file
+        self.projectViewModel = projectViewModel
+        self._selectedBatchFile = selectedBatchFile
         self._batchFileViewModel = State(initialValue: BatchFileViewModel(batchFile: file))
     }
     
@@ -43,7 +45,7 @@ struct FileRowView: View {
             HStack {
                 Image(systemName: "doc.text.fill")
                     .foregroundColor(.accentColor)
-                FileDetailView(file: observedBatchFile ?? file)
+                FileDetailView(file: file)
                 Spacer()
                 actionButton
             }
@@ -53,7 +55,7 @@ struct FileRowView: View {
         .contentShape(Rectangle())
         .cornerRadius(8)
         .onTapGesture {
-            projectViewModel.selectedBatchFile = observedBatchFile ?? file
+            selectedBatchFile = file
         }
         .focusable()
         .focusEffectDisabled()
@@ -62,15 +64,11 @@ struct FileRowView: View {
             batchFileViewModel.updateStatus(forBatchFile: file)
         }
         .onChange(of: TaskManager.shared.runningTasks) {
-            if let observedFile = observedBatchFile {
-                batchFileViewModel.updateStatus(forBatchFile: observedFile)
-            }
+            batchFileViewModel.updateStatus(forBatchFile: file)
+            
         }
-        .onChange(of: observedBatchFile?.batchJob?.jobStatus) { _, _ in
-            // Update view model when job status changes
-            if let observedFile = observedBatchFile {
-                batchFileViewModel.updateStatus(forBatchFile: observedFile)
-            }
+        .onChange(of: file.batchJob?.jobStatus) {
+            batchFileViewModel.updateStatus(forBatchFile: file)
         }
     }
 }
@@ -97,8 +95,8 @@ extension FileRowView {
         Button {
             Task {
                 do {
-                    projectViewModel.selectedBatchFile = observedBatchFile ?? file
-                    try await projectViewModel.runJob(forFile: observedBatchFile ?? file, inModelContext: modelContext)
+                    selectedBatchFile = file
+                    try await projectViewModel.runJob(forFile: file, inModelContext: modelContext)
                 } catch {
                     toastPresenter.showErrorToast(withMessage: error.localizedDescription)
                 }
@@ -110,7 +108,7 @@ extension FileRowView {
         }
         .buttonStyle(.glassProminent)
         .buttonBorderShape(.circle)
-        .tint(.mint.opacity(colorScheme == .dark ? 0.5 : 0.8))
+        .tint(.orange.opacity(colorScheme == .dark ? 0.5 : 0.8))
         .help("Run file")
         .scaleEffect(1.2)
         .disabled(actionButtonDisabled)
@@ -119,7 +117,8 @@ extension FileRowView {
     @ViewBuilder
     private var stopBatchJobButton: some View {
         Button {
-            projectViewModel.cancelJob(forFile: observedBatchFile ?? file, inModelContext: modelContext)
+            selectedBatchFile = file
+            projectViewModel.cancelJob(forFile: file, inModelContext: modelContext)
         } label: {
             Image(systemName: "stop.circle")
                 .padding(8)
@@ -137,8 +136,8 @@ extension FileRowView {
         Button {
             Task {
                 do {
-                    projectViewModel.selectedBatchFile = observedBatchFile ?? file
-                    try await projectViewModel.retryJob(forFile: observedBatchFile ?? file, inModelContext: modelContext)
+                    selectedBatchFile = file
+                    try await projectViewModel.retryJob(forFile: file, inModelContext: modelContext)
                 } catch {
                     toastPresenter.showErrorToast(withMessage: error.localizedDescription)
                 }
@@ -170,25 +169,23 @@ extension FileRowView {
         .tint(.blue.opacity(colorScheme == .dark ? 0.5 : 0.8))
         .help("Download batch job result file")
         .scaleEffect(1.2)
-        .disabled((observedBatchFile ?? file).batchJob?.resultsFileName == nil)
+        .disabled(file.batchJob?.resultsFileName == nil)
     }
 }
 
 extension FileRowView {
     private func setupBatchJobIfNeeded() {
-        let currentFile = observedBatchFile ?? file
-        if currentFile.batchJob == nil {
-            let batchJob = BatchJob(batchFile: currentFile)
+        if file.batchJob == nil {
+            let batchJob = BatchJob(batchFile: file)
             modelContext.insert(batchJob)
-            currentFile.batchJob = batchJob
+            file.batchJob = batchJob
             try? modelContext.save()
         }
     }
     
     private func downloadResultFile() {
-        let currentFile = observedBatchFile ?? file
-        guard let resultPath = currentFile.resultPath,
-              let resultsFileName = currentFile.batchJob?.resultsFileName else {
+        guard let resultPath = file.resultPath,
+              let resultsFileName = file.batchJob?.resultsFileName else {
             toastPresenter.showErrorToast(withMessage: "No result file available for download")
             return
         }
@@ -228,242 +225,242 @@ extension FileRowView {
     }
 }
 
-#Preview("Run Button") {
-    let project = Project(name: "Sample Project")
-    let file = BatchFile(
-        name: "sample_data.jsonl",
-        originalURL: URL(fileURLWithPath: "/Users/example/Documents/sample_data.jsonl"),
-        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/sample_data.jsonl"),
-        fileSize: 2048576,
-        project: project
-    )
-    let batchJob = BatchJob(batchFile: file)
-    batchJob.jobStatus = .notStarted
-    file.batchJob = batchJob
-    
-    let projectViewModel = ProjectViewModel(project: project)
-    projectViewModel.keychainManager.geminiAPIKey = "key"
-    
-    return FileRowView(file: file)
-        .environment(ToastPresenter())
-        .environment(projectViewModel)
-        .modelContainer(
-            for: [Project.self, BatchFile.self, BatchJob.self],
-            inMemory: true
-        )
-        .frame(width: 600)
-        .padding()
-}
-
-#Preview("Stop Button - Running Job") {
-    let project = Project(name: "Sample Project")
-    let file = BatchFile(
-        name: "running_job.jsonl",
-        originalURL: URL(fileURLWithPath: "/Users/example/Documents/running_job.jsonl"),
-        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/running_job.jsonl"),
-        fileSize: 1024000,
-        project: project
-    )
-    
-    // Create a batch job in running state
-    let batchJob = BatchJob(batchFile: file)
-    batchJob.jobStatus = .running
-    batchJob.startedAt = Date()
-    file.batchJob = batchJob
-    
-    // Simulate running task with correct type
-    let mockTask: Task<Void, Error> = Task {
-        // Simulate a long-running task
-        try await Task.sleep(nanoseconds: 10_000_000_000) // 10 seconds
-    }
-    TaskManager.shared.addTask(for: file.persistentModelID, task: mockTask)
-    
-    return FileRowView(file: file)
-        .environment(ToastPresenter())
-        .environment(ProjectViewModel(project: project))
-        .modelContainer(
-            for: [Project.self, BatchFile.self, BatchJob.self],
-            inMemory: true
-        )
-        .frame(width: 600)
-        .padding()
-}
-
-#Preview("Retry Button - Failed Job") {
-    let project = Project(name: "Sample Project")
-    let file = BatchFile(
-        name: "failed_job.jsonl",
-        originalURL: URL(fileURLWithPath: "/Users/example/Documents/failed_job.jsonl"),
-        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/failed_job.jsonl"),
-        fileSize: 512000,
-        project: project
-    )
-    
-    // Create a failed batch job
-    let batchJob = BatchJob(batchFile: file)
-    batchJob.jobStatus = .failed
-    batchJob.startedAt = Date().addingTimeInterval(-3600) // 1 hour ago
-    file.batchJob = batchJob
-    
-    let projectViewModel = ProjectViewModel(project: project)
-    projectViewModel.keychainManager.geminiAPIKey = "key"
-    
-    return FileRowView(file: file)
-        .environment(ToastPresenter())
-        .environment(projectViewModel)
-        .modelContainer(
-            for: [Project.self, BatchFile.self, BatchJob.self],
-            inMemory: true
-        )
-        .frame(width: 600)
-        .padding()
-}
-
-#Preview("Download Button - Completed Job") {
-    let project = Project(name: "Sample Project")
-    let file = BatchFile(
-        name: "completed_job.jsonl",
-        originalURL: URL(fileURLWithPath: "/Users/example/Documents/completed_job.jsonl"),
-        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/completed_job.jsonl"),
-        fileSize: 3145728,
-        project: project
-    )
-    
-    // Create a completed batch job with results
-    let batchJob = BatchJob(batchFile: file)
-    batchJob.jobStatus = .jobFileDownloaded
-    batchJob.startedAt = Date().addingTimeInterval(-7200) // 2 hours ago
-    batchJob.resultsFileName = "completed_job_results.jsonl"
-    file.batchJob = batchJob
-    file.resultPath = "/Users/example/Projects/GeminiBatch/Results/completed_job_results.jsonl"
-    
-    return FileRowView(file: file)
-        .environment(ToastPresenter())
-        .environment(ProjectViewModel(project: project))
-        .modelContainer(
-            for: [Project.self, BatchFile.self, BatchJob.self],
-            inMemory: true
-        )
-        .frame(width: 600)
-        .padding()
-}
-
-#Preview("Retry Button - Cancelled Job") {
-    let project = Project(name: "Sample Project")
-    let file = BatchFile(
-        name: "cancelled_job.jsonl",
-        originalURL: URL(fileURLWithPath: "/Users/example/Documents/cancelled_job.jsonl"),
-        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/cancelled_job.jsonl"),
-        fileSize: 768000,
-        project: project
-    )
-    
-    // Create a cancelled batch job
-    let batchJob = BatchJob(batchFile: file)
-    batchJob.jobStatus = .cancelled
-    batchJob.startedAt = Date().addingTimeInterval(-1800) // 30 minutes ago
-    file.batchJob = batchJob
-    
-    return FileRowView(file: file)
-        .environment(ToastPresenter())
-        .environment(ProjectViewModel(project: project))
-        .modelContainer(
-            for: [Project.self, BatchFile.self, BatchJob.self],
-            inMemory: true
-        )
-        .frame(width: 600)
-        .padding()
-}
-
-#Preview("Retry Button - Expired Job") {
-    let project = Project(name: "Sample Project")
-    let file = BatchFile(
-        name: "expired_job.jsonl",
-        originalURL: URL(fileURLWithPath: "/Users/example/Documents/expired_job.jsonl"),
-        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/expired_job.jsonl"),
-        fileSize: 1536000,
-        project: project
-    )
-    
-    // Create an expired batch job
-    let batchJob = BatchJob(batchFile: file)
-    batchJob.jobStatus = .expired
-    batchJob.startedAt = Date().addingTimeInterval(-172800) // 48 hours ago
-    file.batchJob = batchJob
-    
-    return FileRowView(file: file)
-        .environment(ToastPresenter())
-        .environment(ProjectViewModel(project: project))
-        .modelContainer(
-            for: [Project.self, BatchFile.self, BatchJob.self],
-            inMemory: true
-        )
-        .frame(width: 600)
-        .padding()
-}
-
-#Preview("All Button States") {
-    let project = Project(name: "Preview Project")
-    
-    // Create files for different states
-    let runFile = BatchFile(
-        name: "run_job.jsonl",
-        originalURL: URL(fileURLWithPath: "/Users/example/Documents/run_job.jsonl"),
-        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/run_job.jsonl"),
-        fileSize: 1024000,
-        project: project
-    )
-    
-    let runningFile = BatchFile(
-        name: "running_job.jsonl",
-        originalURL: URL(fileURLWithPath: "/Users/example/Documents/running_job.jsonl"),
-        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/running_job.jsonl"),
-        fileSize: 2048000,
-        project: project
-    )
-    let runningJob = BatchJob(batchFile: runningFile)
-    runningJob.jobStatus = .running
-    runningJob.startedAt = Date()
-    runningFile.batchJob = runningJob
-    
-    let failedFile = BatchFile(
-        name: "failed_job.jsonl",
-        originalURL: URL(fileURLWithPath: "/Users/example/Documents/failed_job.jsonl"),
-        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/failed_job.jsonl"),
-        fileSize: 512000,
-        project: project
-    )
-    let failedJob = BatchJob(batchFile: failedFile)
-    failedJob.jobStatus = .failed
-    failedJob.startedAt = Date().addingTimeInterval(-3600)
-    failedFile.batchJob = failedJob
-    
-    let completedFile = BatchFile(
-        name: "completed_job.jsonl",
-        originalURL: URL(fileURLWithPath: "/Users/example/Documents/completed_job.jsonl"),
-        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/completed_job.jsonl"),
-        fileSize: 3145728,
-        project: project
-    )
-    let completedJob = BatchJob(batchFile: completedFile)
-    completedJob.jobStatus = .jobFileDownloaded
-    completedJob.startedAt = Date().addingTimeInterval(-7200)
-    completedJob.resultsFileName = "completed_job_results.jsonl"
-    completedFile.batchJob = completedJob
-    completedFile.resultPath = "/Users/example/Projects/GeminiBatch/Results/completed_job_results.jsonl"
-    
-    return VStack(spacing: 16) {
-        FileRowView(file: runFile)
-        FileRowView(file: runningFile)
-        FileRowView(file: failedFile)
-        FileRowView(file: completedFile)
-    }
-    .environment(ToastPresenter())
-    .environment(ProjectViewModel(project: project))
-    .modelContainer(
-        for: [Project.self, BatchFile.self, BatchJob.self],
-        inMemory: true
-    )
-    .frame(width: 700)
-    .padding()
-}
+//#Preview("Run Button") {
+//    let project = Project(name: "Sample Project")
+//    let file = BatchFile(
+//        name: "sample_data.jsonl",
+//        originalURL: URL(fileURLWithPath: "/Users/example/Documents/sample_data.jsonl"),
+//        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/sample_data.jsonl"),
+//        fileSize: 2048576,
+//        project: project
+//    )
+//    let batchJob = BatchJob(batchFile: file)
+//    batchJob.jobStatus = .notStarted
+//    file.batchJob = batchJob
+//    
+//    let projectViewModel = ProjectViewModel(project: project)
+//    projectViewModel.keychainManager.geminiAPIKey = "key"
+//    
+//    return FileRowView(file: file)
+//        .environment(ToastPresenter())
+//        .environment(projectViewModel)
+//        .modelContainer(
+//            for: [Project.self, BatchFile.self, BatchJob.self],
+//            inMemory: true
+//        )
+//        .frame(width: 600)
+//        .padding()
+//}
+//
+//#Preview("Stop Button - Running Job") {
+//    let project = Project(name: "Sample Project")
+//    let file = BatchFile(
+//        name: "running_job.jsonl",
+//        originalURL: URL(fileURLWithPath: "/Users/example/Documents/running_job.jsonl"),
+//        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/running_job.jsonl"),
+//        fileSize: 1024000,
+//        project: project
+//    )
+//    
+//    // Create a batch job in running state
+//    let batchJob = BatchJob(batchFile: file)
+//    batchJob.jobStatus = .running
+//    batchJob.startedAt = Date()
+//    file.batchJob = batchJob
+//    
+//    // Simulate running task with correct type
+//    let mockTask: Task<Void, Error> = Task {
+//        // Simulate a long-running task
+//        try await Task.sleep(nanoseconds: 10_000_000_000) // 10 seconds
+//    }
+//    TaskManager.shared.addTask(for: file.persistentModelID, task: mockTask)
+//    
+//    return FileRowView(file: file)
+//        .environment(ToastPresenter())
+//        .environment(ProjectViewModel(project: project))
+//        .modelContainer(
+//            for: [Project.self, BatchFile.self, BatchJob.self],
+//            inMemory: true
+//        )
+//        .frame(width: 600)
+//        .padding()
+//}
+//
+//#Preview("Retry Button - Failed Job") {
+//    let project = Project(name: "Sample Project")
+//    let file = BatchFile(
+//        name: "failed_job.jsonl",
+//        originalURL: URL(fileURLWithPath: "/Users/example/Documents/failed_job.jsonl"),
+//        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/failed_job.jsonl"),
+//        fileSize: 512000,
+//        project: project
+//    )
+//    
+//    // Create a failed batch job
+//    let batchJob = BatchJob(batchFile: file)
+//    batchJob.jobStatus = .failed
+//    batchJob.startedAt = Date().addingTimeInterval(-3600) // 1 hour ago
+//    file.batchJob = batchJob
+//    
+//    let projectViewModel = ProjectViewModel(project: project)
+//    projectViewModel.keychainManager.geminiAPIKey = "key"
+//    
+//    return FileRowView(file: file)
+//        .environment(ToastPresenter())
+//        .environment(projectViewModel)
+//        .modelContainer(
+//            for: [Project.self, BatchFile.self, BatchJob.self],
+//            inMemory: true
+//        )
+//        .frame(width: 600)
+//        .padding()
+//}
+//
+//#Preview("Download Button - Completed Job") {
+//    let project = Project(name: "Sample Project")
+//    let file = BatchFile(
+//        name: "completed_job.jsonl",
+//        originalURL: URL(fileURLWithPath: "/Users/example/Documents/completed_job.jsonl"),
+//        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/completed_job.jsonl"),
+//        fileSize: 3145728,
+//        project: project
+//    )
+//    
+//    // Create a completed batch job with results
+//    let batchJob = BatchJob(batchFile: file)
+//    batchJob.jobStatus = .jobFileDownloaded
+//    batchJob.startedAt = Date().addingTimeInterval(-7200) // 2 hours ago
+//    batchJob.resultsFileName = "completed_job_results.jsonl"
+//    file.batchJob = batchJob
+//    file.resultPath = "/Users/example/Projects/GeminiBatch/Results/completed_job_results.jsonl"
+//    
+//    return FileRowView(file: file)
+//        .environment(ToastPresenter())
+//        .environment(ProjectViewModel(project: project))
+//        .modelContainer(
+//            for: [Project.self, BatchFile.self, BatchJob.self],
+//            inMemory: true
+//        )
+//        .frame(width: 600)
+//        .padding()
+//}
+//
+//#Preview("Retry Button - Cancelled Job") {
+//    let project = Project(name: "Sample Project")
+//    let file = BatchFile(
+//        name: "cancelled_job.jsonl",
+//        originalURL: URL(fileURLWithPath: "/Users/example/Documents/cancelled_job.jsonl"),
+//        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/cancelled_job.jsonl"),
+//        fileSize: 768000,
+//        project: project
+//    )
+//    
+//    // Create a cancelled batch job
+//    let batchJob = BatchJob(batchFile: file)
+//    batchJob.jobStatus = .cancelled
+//    batchJob.startedAt = Date().addingTimeInterval(-1800) // 30 minutes ago
+//    file.batchJob = batchJob
+//    
+//    return FileRowView(file: file)
+//        .environment(ToastPresenter())
+//        .environment(ProjectViewModel(project: project))
+//        .modelContainer(
+//            for: [Project.self, BatchFile.self, BatchJob.self],
+//            inMemory: true
+//        )
+//        .frame(width: 600)
+//        .padding()
+//}
+//
+//#Preview("Retry Button - Expired Job") {
+//    let project = Project(name: "Sample Project")
+//    let file = BatchFile(
+//        name: "expired_job.jsonl",
+//        originalURL: URL(fileURLWithPath: "/Users/example/Documents/expired_job.jsonl"),
+//        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/expired_job.jsonl"),
+//        fileSize: 1536000,
+//        project: project
+//    )
+//    
+//    // Create an expired batch job
+//    let batchJob = BatchJob(batchFile: file)
+//    batchJob.jobStatus = .expired
+//    batchJob.startedAt = Date().addingTimeInterval(-172800) // 48 hours ago
+//    file.batchJob = batchJob
+//    
+//    return FileRowView(file: file)
+//        .environment(ToastPresenter())
+//        .environment(ProjectViewModel(project: project))
+//        .modelContainer(
+//            for: [Project.self, BatchFile.self, BatchJob.self],
+//            inMemory: true
+//        )
+//        .frame(width: 600)
+//        .padding()
+//}
+//
+//#Preview("All Button States") {
+//    let project = Project(name: "Preview Project")
+//    
+//    // Create files for different states
+//    let runFile = BatchFile(
+//        name: "run_job.jsonl",
+//        originalURL: URL(fileURLWithPath: "/Users/example/Documents/run_job.jsonl"),
+//        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/run_job.jsonl"),
+//        fileSize: 1024000,
+//        project: project
+//    )
+//    
+//    let runningFile = BatchFile(
+//        name: "running_job.jsonl",
+//        originalURL: URL(fileURLWithPath: "/Users/example/Documents/running_job.jsonl"),
+//        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/running_job.jsonl"),
+//        fileSize: 2048000,
+//        project: project
+//    )
+//    let runningJob = BatchJob(batchFile: runningFile)
+//    runningJob.jobStatus = .running
+//    runningJob.startedAt = Date()
+//    runningFile.batchJob = runningJob
+//    
+//    let failedFile = BatchFile(
+//        name: "failed_job.jsonl",
+//        originalURL: URL(fileURLWithPath: "/Users/example/Documents/failed_job.jsonl"),
+//        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/failed_job.jsonl"),
+//        fileSize: 512000,
+//        project: project
+//    )
+//    let failedJob = BatchJob(batchFile: failedFile)
+//    failedJob.jobStatus = .failed
+//    failedJob.startedAt = Date().addingTimeInterval(-3600)
+//    failedFile.batchJob = failedJob
+//    
+//    let completedFile = BatchFile(
+//        name: "completed_job.jsonl",
+//        originalURL: URL(fileURLWithPath: "/Users/example/Documents/completed_job.jsonl"),
+//        storedURL: URL(fileURLWithPath: "/Users/example/Projects/GeminiBatch/Storage/completed_job.jsonl"),
+//        fileSize: 3145728,
+//        project: project
+//    )
+//    let completedJob = BatchJob(batchFile: completedFile)
+//    completedJob.jobStatus = .jobFileDownloaded
+//    completedJob.startedAt = Date().addingTimeInterval(-7200)
+//    completedJob.resultsFileName = "completed_job_results.jsonl"
+//    completedFile.batchJob = completedJob
+//    completedFile.resultPath = "/Users/example/Projects/GeminiBatch/Results/completed_job_results.jsonl"
+//    
+//    return VStack(spacing: 16) {
+//        FileRowView(file: runFile)
+//        FileRowView(file: runningFile)
+//        FileRowView(file: failedFile)
+//        FileRowView(file: completedFile)
+//    }
+//    .environment(ToastPresenter())
+//    .environment(ProjectViewModel(project: project))
+//    .modelContainer(
+//        for: [Project.self, BatchFile.self, BatchJob.self],
+//        inMemory: true
+//    )
+//    .frame(width: 700)
+//    .padding()
+//}

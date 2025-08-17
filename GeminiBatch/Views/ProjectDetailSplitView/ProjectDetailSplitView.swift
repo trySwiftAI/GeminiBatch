@@ -11,24 +11,41 @@ import SwiftData
 
 struct ProjectDetailSplitView: View {
     @Environment(\.modelContext) private var modelContext
-        
+    @Query private var projects: [Project]
+    
     @StateObject private var hide = SideHolder(.secondary)
     
     @State var viewModel: ProjectViewModel
-        
+    @State var selectedBatchFile: BatchFile? = nil
+    
+    private var project: Project? {
+        projects.first
+    }
+    
     init(project: Project) {
         viewModel = .init(project: project)
+        let projectId = project.id
+        self._projects = Query(filter: #Predicate { $0.id == projectId })
     }
     
     var body: some View {
         Split(
             primary: {
-                ProjectDetailView()
-                .environment(viewModel)
+                if let project = project {
+                    ProjectDetailView(
+                        project: project,
+                        selectedBatchFile: $selectedBatchFile
+                    )
+                } else {
+                    NoProjectSelectedView()
+                }
             },
             secondary: {
-                RunView()
-                    .environment(viewModel)
+                if let batchFile = selectedBatchFile {
+                    RunView(batchFileID: batchFile.id)
+                } else {
+                    EmptyView()
+                }
             }
         )
         .splitter { Splitter.line() }
@@ -40,8 +57,8 @@ struct ProjectDetailSplitView: View {
                 toggleHideButton
             }
         }
-        .onChange(of: viewModel.selectedBatchFile) {
-            if viewModel.selectedBatchFile == nil {
+        .onChange(of: selectedBatchFile) {
+            if selectedBatchFile == nil {
                 withAnimation {
                     hide.side = .secondary
                 }
