@@ -48,6 +48,7 @@ struct FileRowView: View {
                     BatchJobStatusView(status: batchJob.jobStatus)
                         .padding(.trailing, 10)
                 }
+                actionButton
             }
         }
         .padding()
