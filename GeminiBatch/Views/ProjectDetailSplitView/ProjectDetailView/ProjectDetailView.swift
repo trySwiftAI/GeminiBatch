@@ -100,7 +100,7 @@ extension ProjectDetailView {
                 .labelStyle(.titleAndIcon)
         }
         .buttonStyle(.glassProminent)
-        .tint(.blue.opacity(colorScheme == .dark ? 0.5 : 0.8))
+        .tint(.indigo.opacity(colorScheme == .dark ? 0.5 : 0.8))
         .help("Download all result files")
         .scaleEffect(1.2)
         .disabled(!viewModel.canDownloadAll)
@@ -197,7 +197,7 @@ extension ProjectDetailView {
     private func fileListView(_ files: [BatchFile]) -> some View {
         VStack(alignment: .leading) {
             
-            Text("JSONL Files (\(files.count))")
+            Text("Project Batch Files (\(files.count))")
                 .font(.title2)
                 .fontWeight(.semibold)
                 .padding(.horizontal)
@@ -210,12 +210,11 @@ extension ProjectDetailView {
                             selectedBatchFile: $selectedBatchFile
                         )
                         .id(file.id)
+                        Divider()
                     }
                 }
                 .padding(.vertical, 8)
             }
-            
-            Divider()
         }
     }
 }

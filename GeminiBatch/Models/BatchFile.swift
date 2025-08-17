@@ -68,4 +68,27 @@ extension BatchFile {
         return Date() > expirationTime
     }
     
+    var geminiFileExpirationTimeRemaining: String? {
+        guard let expirationTime = geminiFileExpirationTime else {
+            return nil
+        }
+        
+        let timeRemaining = expirationTime.timeIntervalSinceNow
+        
+        if timeRemaining <= 0 {
+            return "Expired"
+        }
+        
+        let hours = Int(timeRemaining / 3600)
+        let minutes = Int((timeRemaining.truncatingRemainder(dividingBy: 3600)) / 60)
+        
+        if hours > 2 {
+            return "Expires in \(hours) hours"
+        } else if hours >= 1 {
+            return "Expires in \(hours) hour \(minutes) minutes"
+        } else {
+            return "Expires in \(minutes) minutes"
+        }
+    }
+    
 }

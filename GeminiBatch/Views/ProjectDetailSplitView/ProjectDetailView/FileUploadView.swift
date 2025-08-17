@@ -17,7 +17,7 @@ struct FileUploadView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             
-            Text("Upload Files")
+            Text(project.batchFiles.isEmpty ? "Upload Files" : "Upload More Files")
                 .font(.title2)
                 .fontWeight(.semibold)
             

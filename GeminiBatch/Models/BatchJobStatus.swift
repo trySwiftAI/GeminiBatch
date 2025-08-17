@@ -38,28 +38,28 @@ enum BatchJobStatus: String, CaseIterable, Codable, Sendable {
         }
     }
     
-    var geminiStatusTitle: String {
+    var statusTitle: String {
         switch self {
         case .notStarted:
-            return "BATCH_NOT_STARTED"
+            return "NOT_STARTED"
         case .fileUploaded:
-            return "BATCH_FILE_UPLOADED"
+            return "FILE_UPLOADED"
         case .unspecified:
-            return "BATCH_STATE_UNSPECIFIED"
+            return "STATUS_UNKNOWN"
         case .pending:
-            return "BATCH_STATE_PENDING"
+            return "BATCH_JOB_PENDING"
         case .running:
-            return "BATCH_STATE_RUNNING"
+            return "BATCH_JOB_RUNNING"
         case .succeeded:
-            return "BATCH_STATE_SUCCEEDED"
+            return "BATCH_JOB_SUCCEEDED"
         case .failed:
-            return "BATCH_STATE_FAILED"
+            return "BATCH_JOB_FAILED"
         case .cancelled:
-            return "BATCH_STATE_CANCELLED"
+            return "CANCELLED"
         case .expired:
-            return "BATCH_STATE_EXPIRED"
+            return "EXPIRED"
         case .jobFileDownloaded:
-            return "BATCH_FILE_SAVED"
+            return "BATCH_RESULT_READY"
         }
     }
     

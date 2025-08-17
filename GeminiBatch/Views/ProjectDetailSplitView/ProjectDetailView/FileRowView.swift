@@ -44,6 +44,10 @@ struct FileRowView: View {
                     .foregroundColor(.accentColor)
                 FileDetailView(file: file)
                 Spacer()
+                if let batchJob = file.batchJob {
+                    BatchJobStatusView(status: batchJob.jobStatus)
+                        .padding(.trailing, 10)
+                }
                 actionButton
             }
         }
@@ -146,7 +150,7 @@ extension FileRowView {
         }
         .buttonStyle(.glassProminent)
         .buttonBorderShape(.circle)
-        .tint(.indigo.opacity(colorScheme == .dark ? 0.5 : 0.8))
+        .tint(.blue.opacity(colorScheme == .dark ? 0.5 : 0.8))
         .help("Retry batch job")
         .scaleEffect(1.2)
         .disabled(actionButtonDisabled)
@@ -163,7 +167,7 @@ extension FileRowView {
         }
         .buttonStyle(.glassProminent)
         .buttonBorderShape(.circle)
-        .tint(.blue.opacity(colorScheme == .dark ? 0.5 : 0.8))
+        .tint(.indigo.opacity(colorScheme == .dark ? 0.5 : 0.8))
         .help("Download batch job result file")
         .scaleEffect(1.2)
         .disabled(file.batchJob?.resultsFileName == nil)

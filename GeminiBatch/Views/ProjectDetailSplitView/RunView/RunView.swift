@@ -49,42 +49,13 @@ extension RunView {
                 
                 Spacer()
                 
-                statusBadge(for: batchJob)
+                BatchJobStatusView(status: batchJob.jobStatus)
             }
             
             jobInfoCard(for: batchJob)
         }
         .padding()
         .background(Color(.controlBackgroundColor))
-    }
-    
-    private func statusBadge(for batchJob: BatchJob) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(statusColor(for: batchJob))
-                .frame(width: 8, height: 8)
-            
-            Text(batchJob.jobStatus.geminiStatusTitle)
-                .font(.caption)
-                .fontWeight(.medium)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(statusColor(for: batchJob).opacity(0.1))
-        .cornerRadius(12)
-    }
-    
-    private func statusColor(for batchJob: BatchJob) -> Color {
-        switch batchJob.jobStatus {
-        case .notStarted, .fileUploaded:
-            return .blue
-        case .pending, .running, .unspecified:
-            return .orange
-        case .succeeded, .jobFileDownloaded:
-            return .green
-        case .failed, .cancelled, .expired:
-            return .red
-        }
     }
     
     private func jobInfoCard(for batchJob: BatchJob) -> some View {
