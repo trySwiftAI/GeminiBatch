@@ -17,6 +17,27 @@ struct ProjectDetailView: View {
     @State private var isAPIKeyVisible: Bool = false
     @FocusState private var isAPIKeyFocused
     
+    private var canRunAll: Bool {
+        if projectViewModel.keychainManager.geminiAPIKey.isEmpty {
+            return false
+        }
+        
+        let project = projectViewModel.project
+        let batchJobs = project.batchFiles.compactMap(\.batchJob)
+        
+        return batchJobs.contains { batchJob in
+            switch batchJob.jobStatus {
+            case .notStarted, .fileUploaded, .running, .pending, .succeeded:
+                if TaskManager.shared.isTaskRunning(forBatchJobID: batchJob.persistentModelID) {
+                    return false
+                }
+                return true
+            default:
+                return false
+            }
+        }
+    }
+    
     var body: some View {
         @Bindable var viewModel = projectViewModel
         
@@ -82,7 +103,7 @@ extension ProjectDetailView {
             .tint(.orange.opacity(colorScheme == .dark ? 0.5 : 0.8))
             .help("Run all files")
             .scaleEffect(1.2)
-            .disabled(projectViewModel.keychainManager.geminiAPIKey.isEmpty)
+            .disabled(!canRunAll)
             .padding(.trailing, 20)
         }
         .padding()
