@@ -38,15 +38,15 @@ struct TokenResultsView: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
                     captionText("Input Tokens:")
-                    captionText(viewModel.inputPriceCalculationText)
+                    copyableText(viewModel.inputPriceCalculationText)
                 }
                 HStack {
                     captionText("Thought Tokens:")
-                    captionText(viewModel.thoughtPriceCalculationText)
+                    copyableText(viewModel.thoughtPriceCalculationText)
                 }
                 HStack {
                     captionText("Output Tokens:")
-                    captionText(viewModel.outputPriceCalculationText)
+                    copyableText(viewModel.outputPriceCalculationText)
                 }
             }
             .padding(5)
@@ -65,6 +65,23 @@ extension TokenResultsView {
             .font(.caption)
             .foregroundColor(.secondary)
     }
+    
+    @ViewBuilder
+    private func copyableText(_ text: String) -> some View {
+        Text(text)
+            .font(.caption)
+            .foregroundColor(.secondary)
+            .textSelection(.enabled)
+            .onTapGesture {
+                copyToClipboard(text)
+            }
+            .help("Tap to copy")
+    }
+    
+    private func copyToClipboard(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
 }
 
 #Preview("Normal Volume") {
@@ -81,9 +98,9 @@ extension TokenResultsView {
 #Preview("High Volume - Pro Model") {
     TokenResultsView(
         geminiModel: .pro,
-        totalTokenCount: 250_000,
-        promptTokenCount: 50_000,
-        thoughtsTokenCount: 75_000,
+        totalTokenCount: 50_000,
+        promptTokenCount: 500_000,
+        thoughtsTokenCount: 750_000,
         candidatesTokenCount: 125_000
     )
     .padding()
