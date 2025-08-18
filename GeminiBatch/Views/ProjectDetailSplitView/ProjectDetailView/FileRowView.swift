@@ -18,6 +18,7 @@ struct FileRowView: View {
     let file: BatchFile
     
     @State private var viewModel: BatchFileViewModel
+    @State private var taskManager = TaskManager.shared
     @Binding private var selectedBatchFile: BatchFile?
     
     private var isSelected: Bool {
@@ -64,9 +65,8 @@ struct FileRowView: View {
             setupBatchJobIfNeeded()
             viewModel.updateStatus(forBatchFile: file)
         }
-        .onChange(of: TaskManager.shared.runningTasks) {
+        .onChange(of: taskManager.runningTasks) {
             viewModel.updateStatus(forBatchFile: file)
-            
         }
         .onChange(of: file.batchJob?.jobStatus) {
             viewModel.updateStatus(forBatchFile: file)
