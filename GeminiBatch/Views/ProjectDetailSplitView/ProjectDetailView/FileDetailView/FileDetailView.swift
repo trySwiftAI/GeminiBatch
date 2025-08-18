@@ -9,10 +9,6 @@ import SwiftUI
 import SwiftData
 
 struct FileDetailView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.openWindow) private var openWindow
-    @Environment(ToastPresenter.self) private var toastPresenter
-    
     @Query private var batchFiles: [BatchFile]
     
     private var observedFile: BatchFile? {
@@ -31,7 +27,9 @@ struct FileDetailView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             FileOverviewView(file: file)
-            fileDetailView
+            if let batchJob = observedFile?.batchJob {
+                fileDetailView(forBatchJob: batchJob)
+            }
         }
     }
 }
@@ -39,47 +37,45 @@ struct FileDetailView: View {
 extension FileDetailView {
     
     @ViewBuilder
-    private var fileDetailView: some View {
-        if let batchJob = observedFile?.batchJob {
-            switch batchJob.jobStatus {
-            case .notStarted:
-                fileCaptionMessageView(
-                    text: "File ready. Click play to upload and start batch processing"
-                )
-            case .fileUploaded:
-                fileUploadedDetailView
-            case .pending:
-                jobActiveDetailView(statusMessage: "Batch job queued and waiting to start")
-            case .running:
-                jobActiveDetailView(statusMessage: "Batch job is currently running")
-            case .succeeded:
-                jobSucceededDetailView
-            case .jobFileDownloaded:
-                fileDownloadedView
-            case .unspecified:
-                fileIssueDetailView(
-                    text: "Job status unknown. Please check the job details or retry.",
-                    iconName: "questionmark.circle.fill"
-                )
-            case .failed:
-                fileIssueDetailView(
-                    text: "Job failed. Review the error details and retry with corrections.",
-                    iconName: "xmark.circle.fill"
-                )
-            case .cancelled:
-                fileIssueDetailView(
-                    text: "Job was cancelled. Click retry to start a new batch job.",
-                    iconName: "stop.circle.fill"
-                )
-            case .expired:
-                fileIssueDetailView(
-                    text: "Job expired after 48 hours. Click play to start a new job.",
-                    iconName: "timer.circle.fill"
-                )
-            }
+    private func fileDetailView(forBatchJob batchJob: BatchJob) -> some View {
+        switch batchJob.jobStatus {
+        case .notStarted:
+            fileCaptionMessageView(text: "File ready. Click play to upload and start batch processing")
+        case .fileUploaded:
+            fileUploadedDetailView
+        case .pending:
+            jobActiveDetailView(statusMessage: "Batch job queued and waiting to start")
+        case .running:
+            jobActiveDetailView(statusMessage: "Batch job is currently running")
+        case .succeeded:
+            jobSucceededDetailView
+        case .jobFileDownloaded:
+            fileDownloadedView
+        case .unspecified:
+            fileIssueDetailView(
+                text: "Job status unknown. Please check the job details or retry.",
+                iconName: "questionmark.circle.fill"
+            )
+        case .failed:
+            fileIssueDetailView(
+                text: "Job failed. Review the error details and retry with corrections.",
+                iconName: "xmark.circle.fill"
+            )
+        case .cancelled:
+            fileIssueDetailView(
+                text: "Job was cancelled. Click retry to start a new batch job.",
+                iconName: "stop.circle.fill"
+            )
+        case .expired:
+            fileIssueDetailView(
+                text: "Job expired after 48 hours. Click play to start a new job.",
+                iconName: "timer.circle.fill"
+            )
         }
     }
-    
+}
+
+extension FileDetailView {
     @ViewBuilder
     private var fileUploadedDetailView: some View {
         VStack(alignment: .leading, spacing: 6) {
