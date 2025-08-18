@@ -27,7 +27,7 @@ struct ProjectDetailView: View {
         self._viewModel = State(initialValue: ProjectViewModel(project: project))
         self._selectedBatchFile = selectedBatchFile
         if let geminiModel = GeminiModel(rawValue: project.geminiModel) {
-            self.selectedGeminiModel = geminiModel
+            self._selectedGeminiModel = State(initialValue: geminiModel)
         }
     }
     
