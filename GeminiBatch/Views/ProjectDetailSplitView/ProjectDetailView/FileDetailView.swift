@@ -13,7 +13,20 @@ struct FileDetailView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(ToastPresenter.self) private var toastPresenter
     
+    @Query private var batchFiles: [BatchFile]
+    
+    private var observedFile: BatchFile? {
+        batchFiles.first
+    }
+    
     let file: BatchFile
+    
+    init(file: BatchFile) {
+        self.file = file
+        let fileID = file.id
+        self._batchFiles = Query(filter: #Predicate { $0.id == fileID })
+    }
+    
     
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -43,51 +56,22 @@ struct FileDetailView: View {
 }
 
 extension FileDetailView {
-    
-    /*
-
-         case .pending:
-             return "clock.fill"
-         case .running:
-             return "gearshape.2.fill"
-         case .succeeded:
-             return "checkmark.circle.fill"
-         case .jobFileDownloaded:
-             return "arrow.down.circle.fill"
-         }
-     */
     @ViewBuilder
     private var fileDetailView: some View {
-        if let batchJob = file.batchJob {
+        if let batchJob = observedFile?.batchJob {
             switch batchJob.jobStatus {
             case .notStarted:
                 fileNotStartedDetailView
             case .fileUploaded:
                 fileUploadedDetailView
             case .pending:
-                Text(file.storedURL.path)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                jobPendingDetailView
             case .running:
-                Text(file.storedURL.path)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                jobRunningDetailView
             case .succeeded:
-                Text(file.storedURL.path)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                jobSucceededDetailView
             case .jobFileDownloaded:
-                Text(file.storedURL.path)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                fileDownloadedView
             case .unspecified:
                 fileIssueDetailView(
                     text: "Job status unknown. Please check the job details or retry.",
@@ -100,7 +84,7 @@ extension FileDetailView {
                 )
             case .cancelled:
                 fileIssueDetailView(
-                    text: "Job was cancelled. Clikc retry to start a new batch job.",
+                    text: "Job was cancelled. Click retry to start a new batch job.",
                     iconName: "stop.circle.fill"
                 )
             case .expired:
@@ -133,41 +117,73 @@ extension FileDetailView {
             }
             
             if let geminiFileName = file.geminiFileName {
-                HStack(spacing: 8) {
-                    Text(geminiFileName)
-                        .font(.caption)
-                        .foregroundColor(.primary)
-                        .textSelection(.enabled)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color(.controlBackgroundColor))
-                        .cornerRadius(6)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color(.separatorColor), lineWidth: 0.5)
-                        )
-                    
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(geminiFileName, forType: .string)
-                        toastPresenter.showSuccessToast(withMessage: "Gemini file name copied to clipboard")
-                    } label: {
-                        Image(systemName: "doc.on.doc")
-                            .font(.caption2)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Copy Gemini file name")
-                    
-                    
-                    if let fileExpirationText = file.geminiFileExpirationTimeRemaining {
-                        HStack(spacing: 6) {
-                            Text(fileExpirationText)
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        }
-                    }
-                    
-                }
+                fileNameView(geminiFileName)
+            }
+        }
+    }
+    
+    private var jobPendingDetailView: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "clock.fill")
+                    .foregroundColor(.orange)
+                    .font(.caption)
+                
+                Text("Batch job queued and waiting to start")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            if let geminiFileName = file.geminiFileName {
+                fileNameView(geminiFileName)
+            }
+            
+            if let batchJobName = file.batchJob?.geminiJobName {
+                jobNameView(batchJobName)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var jobRunningDetailView: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "gearshape.2.fill")
+                    .foregroundColor(.orange)
+                    .font(.caption)
+                
+                Text("Batch job is currently running")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            if let geminiFileName = file.geminiFileName {
+                fileNameView(geminiFileName)
+            }
+            
+            if let batchJobName = file.batchJob?.geminiJobName {
+                jobNameView(batchJobName)
+            }
+        }
+    }
+    
+    private var jobSucceededDetailView: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.caption)
+                
+                Text("Batch job completed successfully! Results ready to download.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            if let batchJobName = file.batchJob?.geminiJobName {
+                jobNameView(batchJobName)
+            }
+            if let resultPath = file.resultPath {
+                resultPathView(resultPath)
             }
         }
     }
@@ -185,6 +201,205 @@ extension FileDetailView {
             Text(text)
                 .font(.caption)
                 .foregroundColor(.secondary)
+        }
+    }
+    
+    @ViewBuilder
+    private var fileDownloadedView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.caption)
+                
+                Text("Job completed successfully! Results are ready to download.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            if let batchJob = file.batchJob {
+                // Token usage and cost information
+                if let totalTokens = batchJob.totalTokenCount,
+                   let promptTokens = batchJob.promptTokenCount,
+                   let candidatesTokens = batchJob.candidatesTokenCount {
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 12) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "textformat")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                Text("\(totalTokens.formatted()) total tokens")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            // Calculate and display cost
+                            if let geminiModel = GeminiModel(rawValue: file.project.geminiModel) {
+                                let cost = geminiModel.calculateBatchCost(
+                                    inputTokens: promptTokens,
+                                    outputTokens: candidatesTokens
+                                )
+                                
+                                HStack(spacing: 4) {
+                                    Image(systemName: "dollarsign.circle")
+                                        .font(.caption2)
+                                        .foregroundColor(.green)
+                                    Text("~\(String(format: "$%.4f", cost))")
+                                        .font(.caption)
+                                        .foregroundColor(.green)
+                                        .fontWeight(.medium)
+                                }
+                            }
+                        }
+                        
+                        // Breakdown of token usage
+                        HStack(spacing: 12) {
+                            Text("Input: \(promptTokens.formatted())")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            
+                            Text("Output: \(candidatesTokens.formatted())")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            
+                            if let thoughtsTokens = batchJob.thoughtsTokenCount, thoughtsTokens > 0 {
+                                Text("Thoughts: \(thoughtsTokens.formatted())")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color(.controlBackgroundColor))
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color(.separatorColor), lineWidth: 0.5)
+                    )
+                }
+            }
+        }
+    }
+}
+
+extension FileDetailView {
+    @ViewBuilder
+    private func fileNameView(_ name: String) -> some View {
+        HStack(spacing: 8) {
+            Text("Gemini File Name:")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            Text(name)
+                .font(.caption)
+                .foregroundColor(.primary)
+                .textSelection(.enabled)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(.controlBackgroundColor))
+                .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color(.separatorColor), lineWidth: 0.5)
+                )
+            
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(name, forType: .string)
+                toastPresenter.showSuccessToast(withMessage: "Gemini file name copied to clipboard")
+            } label: {
+                Image(systemName: "doc.on.doc")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .help("Copy Gemini file name")
+            
+            
+            if let fileExpirationText = file.geminiFileExpirationTimeRemaining {
+                HStack(spacing: 6) {
+                    Text(fileExpirationText)
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func jobNameView(_ name: String) -> some View {
+        HStack(spacing: 8) {
+            Text("Gemini Batch Job Name:")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text(name)
+                .font(.caption)
+                .foregroundColor(.primary)
+                .textSelection(.enabled)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(.controlBackgroundColor))
+                .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color(.separatorColor), lineWidth: 0.5)
+                )
+            
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(name, forType: .string)
+                toastPresenter.showSuccessToast(withMessage: "Gemini batch job name copied to clipboard")
+            } label: {
+                Image(systemName: "doc.on.doc")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .help("Copy Gemini batch job name")
+        }
+    }
+    
+    @ViewBuilder
+    private func resultPathView(_ path: String) -> some View {
+        HStack(spacing: 8) {
+            Text("Gemini Batch Job Result Path:")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text(path)
+                .font(.caption)
+                .foregroundColor(.primary)
+                .textSelection(.enabled)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(.controlBackgroundColor))
+                .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color(.separatorColor), lineWidth: 0.5)
+                )
+            
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(path, forType: .string)
+                toastPresenter.showSuccessToast(withMessage: "Gemini results path copied to clipboard")
+            } label: {
+                Image(systemName: "doc.on.doc")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .help("Copy Gemini results path")
+            
+            
+            if let jobExpirationText = file.batchJob?.expirationTimeRemaining {
+                HStack(spacing: 6) {
+                    Text(jobExpirationText)
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+            }
         }
     }
 }
