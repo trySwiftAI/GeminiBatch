@@ -30,44 +30,28 @@ struct FileDetailView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .center, spacing: 2) {
-                Text(file.name)
-                    .font(.headline)
-                    .lineLimit(1)
-                viewFileButton
-                deleteFileButton
-            }
-            
-            HStack(spacing: 12) {
-                Label(file.formattedFileSize, systemImage: "info.circle")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Label(file.uploadedAt.formatted(date: .abbreviated, time: .shortened), systemImage: "clock")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-            }
-            .padding(.bottom, 4)
-            
+            FileOverviewView(file: file)
             fileDetailView
         }
     }
 }
 
 extension FileDetailView {
+    
     @ViewBuilder
     private var fileDetailView: some View {
         if let batchJob = observedFile?.batchJob {
             switch batchJob.jobStatus {
             case .notStarted:
-                fileNotStartedDetailView
+                fileStatusMessageView(
+                    text: "File ready. Click play to upload and start batch processing"
+                )
             case .fileUploaded:
                 fileUploadedDetailView
             case .pending:
-                jobPendingDetailView
+                jobActiveDetailView(statusMessage: "Batch job queued and waiting to start")
             case .running:
-                jobRunningDetailView
+                jobActiveDetailView(statusMessage: "Batch job is currently running")
             case .succeeded:
                 jobSucceededDetailView
             case .jobFileDownloaded:
@@ -97,65 +81,19 @@ extension FileDetailView {
     }
     
     @ViewBuilder
-    private var fileNotStartedDetailView: some View {
-        Text("File ready. Click play to upload and start batch processing")
-            .font(.caption)
-            .foregroundColor(.secondary)
-    }
-    
-    @ViewBuilder
     private var fileUploadedDetailView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
-                    .font(.caption)
-                
-                Text("File successfully uploaded to Gemini")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
+            fileStatusMessageView(text: "File successfully uploaded to Gemini")
             if let geminiFileName = file.geminiFileName {
                 fileNameView(geminiFileName)
-            }
-        }
-    }
-    
-    private var jobPendingDetailView: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "clock.fill")
-                    .foregroundColor(.orange)
-                    .font(.caption)
-                
-                Text("Batch job queued and waiting to start")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            if let geminiFileName = file.geminiFileName {
-                fileNameView(geminiFileName)
-            }
-            
-            if let batchJobName = file.batchJob?.geminiJobName {
-                jobNameView(batchJobName)
             }
         }
     }
     
     @ViewBuilder
-    private var jobRunningDetailView: some View {
+    private func jobActiveDetailView(statusMessage: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "gearshape.2.fill")
-                    .foregroundColor(.orange)
-                    .font(.caption)
-                
-                Text("Batch job is currently running")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+            fileStatusMessageView(text: statusMessage)
             
             if let geminiFileName = file.geminiFileName {
                 fileNameView(geminiFileName)
@@ -169,15 +107,7 @@ extension FileDetailView {
     
     private var jobSucceededDetailView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
-                    .font(.caption)
-                
-                Text("Batch job completed successfully! Results ready to download.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+            fileStatusMessageView(text: "Batch job completed successfully! Results ready to download.")
             
             if let batchJobName = file.batchJob?.geminiJobName {
                 jobNameView(batchJobName)
@@ -286,44 +216,28 @@ extension FileDetailView {
 
 extension FileDetailView {
     @ViewBuilder
+    private func fileStatusMessageView(text: String) -> some View {
+        Text(text)
+            .font(.caption)
+            .foregroundColor(.secondary)
+    }
+    
+    @ViewBuilder
     private func fileNameView(_ name: String) -> some View {
         HStack(spacing: 8) {
             Text("Gemini File Name:")
                 .font(.caption)
                 .foregroundColor(.secondary)
-            
-            Text(name)
-                .font(.caption)
-                .foregroundColor(.primary)
-                .textSelection(.enabled)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color(.controlBackgroundColor))
-                .cornerRadius(6)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color(.separatorColor), lineWidth: 0.5)
-                )
-            
-            Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(name, forType: .string)
-                toastPresenter.showSuccessToast(withMessage: "Gemini file name copied to clipboard")
-            } label: {
-                Image(systemName: "doc.on.doc")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.borderless)
-            .help("Copy Gemini file name")
-            
+            CopyLinkView(
+                copyContent: name,
+                helpText: "Copy Gemini file name",
+                successMessage: "Gemini file name copied to clipboard"
+            )
             
             if let fileExpirationText = file.geminiFileExpirationTimeRemaining {
-                HStack(spacing: 6) {
-                    Text(fileExpirationText)
-                        .font(.caption)
-                        .foregroundColor(.orange)
-                }
+                Text(fileExpirationText)
+                    .font(.caption)
+                    .foregroundColor(.orange)
             }
         }
     }
@@ -334,30 +248,11 @@ extension FileDetailView {
             Text("Gemini Batch Job Name:")
                 .font(.caption)
                 .foregroundColor(.secondary)
-            Text(name)
-                .font(.caption)
-                .foregroundColor(.primary)
-                .textSelection(.enabled)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color(.controlBackgroundColor))
-                .cornerRadius(6)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color(.separatorColor), lineWidth: 0.5)
-                )
-            
-            Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(name, forType: .string)
-                toastPresenter.showSuccessToast(withMessage: "Gemini batch job name copied to clipboard")
-            } label: {
-                Image(systemName: "doc.on.doc")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.borderless)
-            .help("Copy Gemini batch job name")
+            CopyLinkView(
+                copyContent: name,
+                helpText: "Copy Gemini batch job name",
+                successMessage: "Gemini batch job name copied to clipboard"
+            )
         }
     }
     
@@ -367,94 +262,24 @@ extension FileDetailView {
             Text("Gemini Batch Job Result Path:")
                 .font(.caption)
                 .foregroundColor(.secondary)
-            Text(path)
-                .font(.caption)
-                .foregroundColor(.primary)
-                .textSelection(.enabled)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color(.controlBackgroundColor))
-                .cornerRadius(6)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color(.separatorColor), lineWidth: 0.5)
-                )
-            
-            Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(path, forType: .string)
-                toastPresenter.showSuccessToast(withMessage: "Gemini results path copied to clipboard")
-            } label: {
-                Image(systemName: "doc.on.doc")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.borderless)
-            .help("Copy Gemini results path")
-            
+            CopyLinkView(
+                copyContent: path,
+                helpText: "Copy Gemini results path",
+                successMessage: "Gemini results path copied to clipboard"
+            )
             
             if let jobExpirationText = file.batchJob?.expirationTimeRemaining {
-                HStack(spacing: 6) {
-                    Text(jobExpirationText)
-                        .font(.caption)
-                        .foregroundColor(.orange)
-                }
+                Text(jobExpirationText)
+                    .font(.caption)
+                    .foregroundColor(.orange)
             }
         }
     }
 }
 
-extension FileDetailView {
-    
-    @ViewBuilder
-    private var viewFileButton: some View {
-        Button {
-            openFile(file)
-        } label: {
-            Image(systemName: "eye")
-                .foregroundColor(.blue)
-        }
-        .buttonStyle(.borderless)
-        .buttonBorderShape(.circle)
-        .help("View file")
-        .tint(.blue)
-        .padding(4)
-    }
-    
-    @ViewBuilder
-    private var deleteFileButton: some View {
-        Button {
-            Task {
-                await deleteFile(file)
-            }
-        } label: {
-            Image(systemName: "trash")
-        }
-        .buttonStyle(.borderless)
-        .tint(.red)
-        .buttonBorderShape(.circle)
-        .help("Delete file")
-        .padding(4)
-    }
-}
+
 
 // MARK: File Actions
-extension FileDetailView {
-    
-    private func openFile(_ file: BatchFile) {
-        NSWorkspace.shared.open(file.storedURL)
-    }
-    
-    private func deleteFile(_ file: BatchFile) async {
-        do {
-            try await ProjectFileManager(
-                projectID: file.project.id.uuidString).deleteBatchFile(fileId: file.id, using: .init(modelContainer: modelContext.container))
-        } catch {
-            let errorMessage = "Failed to delete file: \(error.localizedDescription)"
-            toastPresenter.showErrorToast(withMessage: errorMessage)
-        }
-    }
-}
 
 #Preview {
     let project = Project(name: "Sample Project")
