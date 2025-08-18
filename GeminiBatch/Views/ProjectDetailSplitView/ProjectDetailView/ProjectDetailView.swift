@@ -50,7 +50,7 @@ struct ProjectDetailView: View {
             }
             .padding(.horizontal)
             .scrollIndicators(.hidden)
-            Spacer()
+            .edgesIgnoringSafeArea(.bottom)
         }
         .task {
             do {

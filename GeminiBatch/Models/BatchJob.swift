@@ -71,8 +71,10 @@ extension BatchJob {
         let hours = Int(timeRemaining / 3600)
         let minutes = Int((timeRemaining.truncatingRemainder(dividingBy: 3600)) / 60)
         
-        if hours > 0 {
-            return "Expires in \(hours) hours \(minutes) minutes"
+        if hours > 2 {
+            return "Expires in \(hours) hours"
+        } else if hours >= 1 {
+            return "Expires in \(hours) hour \(minutes) minutes"
         } else {
             return "Expires in \(minutes) minutes"
         }
