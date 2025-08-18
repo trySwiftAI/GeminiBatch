@@ -30,7 +30,8 @@ struct ProjectOverviewView: View {
         ZStack {
             if isSelected {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .glassEffect(.regular.interactive().tint(.accentColor), in: .rect(cornerRadius: 8))
+                    .glassEffect(.regular.interactive().tint(.mint.opacity(0.1)),
+                                 in: .rect(cornerRadius: 8))
             }
             projectOverviewView
         }
