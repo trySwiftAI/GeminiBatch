@@ -113,7 +113,6 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
         }
     }
     
-    // Batch pricing (50% discount)
     var batchInputPrice: Double {
         return regularInputPrice * 0.5
     }
@@ -130,102 +129,5 @@ enum GeminiModel: Equatable, Hashable, Identifiable, CaseIterable, Sendable {
     var batchOutputPriceHighVolume: Double? {
         guard let highVolumePrice = regularOutputPriceHighVolume else { return nil }
         return highVolumePrice * 0.5
-    }
-    
-    // Rate limits
-    var rateLimitRPM: Int {
-        switch self {
-        case .flashLite:
-            return 4000
-        case .flash:
-            return 1000
-        case .pro:
-            return 150
-        case .flash2Lite:
-            return 4000
-        case .flash2:
-            return 2000
-        }
-    }
-    
-    var freeRateLimitRPM: Int {
-        switch self {
-        case .flashLite:
-            return 15
-        case .flash:
-            return 10
-        case .pro:
-            return 0 // Pro doesn't have free tier shown
-        case .flash2Lite:
-            return 30
-        case .flash2:
-            return 15
-        }
-    }
-    
-    var freeRateLimitRequestsPerDay: Int {
-        switch self {
-        case .flashLite, .flash:
-            return 500
-        case .pro:
-            return 0
-        case .flash2Lite, .flash2:
-            return 1500
-        }
-    }
-    
-    // Knowledge cutoff
-    var knowledgeCutoff: String {
-        switch self {
-        case .flashLite, .flash, .pro:
-            return "Jan 2025"
-        case .flash2Lite, .flash2:
-            return "Aug 2024"
-        }
-    }
-    
-    // Helper methods for pricing display
-    func formatPrice(_ price: Double) -> String {
-        return String(format: "$%.3f", price)
-    }
-    
-    // Calculate cost for given token counts
-    func calculateRegularCost(inputTokens: Int, outputTokens: Int, isHighVolume: Bool = false, customInputPrice: Double? = nil, customOutputPrice: Double? = nil) -> Double {
-        let inputCost: Double
-        let outputCost: Double
-        
-        // Use custom prices if provided (for custom models)
-        let effectiveInputPrice = customInputPrice ?? regularInputPrice
-        let effectiveOutputPrice = customOutputPrice ?? regularOutputPrice
-        
-        if isHighVolume, let highInputPrice = regularInputPriceHighVolume, let highOutputPrice = regularOutputPriceHighVolume {
-            inputCost = (Double(inputTokens) / 1_000_000) * highInputPrice
-            outputCost = (Double(outputTokens) / 1_000_000) * highOutputPrice
-        } else {
-            inputCost = (Double(inputTokens) / 1_000_000) * effectiveInputPrice
-            outputCost = (Double(outputTokens) / 1_000_000) * effectiveOutputPrice
-        }
-        
-        return inputCost + outputCost
-    }
-    
-    func calculateBatchCost(inputTokens: Int, outputTokens: Int, isHighVolume: Bool = false, customInputPrice: Double? = nil, customOutputPrice: Double? = nil) -> Double {
-        let inputCost: Double
-        let outputCost: Double
-        
-        // Use custom prices if provided (for custom models)
-        let effectiveInputPrice = customInputPrice ?? regularInputPrice
-        let effectiveOutputPrice = customOutputPrice ?? regularOutputPrice
-        
-        if isHighVolume, let highInputPrice = batchInputPriceHighVolume, let highOutputPrice = batchOutputPriceHighVolume {
-            inputCost = (Double(inputTokens) / 1_000_000) * highInputPrice
-            outputCost = (Double(outputTokens) / 1_000_000) * highOutputPrice
-        } else {
-            // Apply 50% batch discount to custom prices
-            inputCost = (Double(inputTokens) / 1_000_000) * (effectiveInputPrice * 0.5)
-            outputCost = (Double(outputTokens) / 1_000_000) * (effectiveOutputPrice * 0.5)
-        }
-        
-        return inputCost + outputCost
     }
 }

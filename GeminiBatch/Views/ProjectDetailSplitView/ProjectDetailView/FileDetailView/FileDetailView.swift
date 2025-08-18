@@ -132,79 +132,29 @@ extension FileDetailView {
     
     @ViewBuilder
     private var fileDownloadedView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
-                    .font(.caption)
-                
-                Text("Job completed successfully! Results are ready to download.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+        VStack(
+            alignment: .leading,
+            spacing: 8
+        ) {
+            fileCaptionMessageView(
+                text: "Job completed successfully! Results are ready to download."
+            )
             
-            if let batchJob = file.batchJob {
-                // Token usage and cost information
-                if let totalTokens = batchJob.totalTokenCount,
-                   let promptTokens = batchJob.promptTokenCount,
-                   let candidatesTokens = batchJob.candidatesTokenCount {
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 12) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "textformat")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Text("\(totalTokens.formatted()) total tokens")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            // Calculate and display cost
-                            if let geminiModel = GeminiModel(rawValue: file.project.geminiModel) {
-                                let cost = geminiModel.calculateBatchCost(
-                                    inputTokens: promptTokens,
-                                    outputTokens: candidatesTokens
-                                )
-                                
-                                HStack(spacing: 4) {
-                                    Image(systemName: "dollarsign.circle")
-                                        .font(.caption2)
-                                        .foregroundColor(.green)
-                                    Text("~\(String(format: "$%.4f", cost))")
-                                        .font(.caption)
-                                        .foregroundColor(.green)
-                                        .fontWeight(.medium)
-                                }
-                            }
-                        }
-                        
-                        // Breakdown of token usage
-                        HStack(spacing: 12) {
-                            Text("Input: \(promptTokens.formatted())")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                            
-                            Text("Output: \(candidatesTokens.formatted())")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                            
-                            if let thoughtsTokens = batchJob.thoughtsTokenCount, thoughtsTokens > 0 {
-                                Text("Thoughts: \(thoughtsTokens.formatted())")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color(.controlBackgroundColor))
-                    .cornerRadius(6)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color(.separatorColor), lineWidth: 0.5)
-                    )
-                }
+            if let geminiModel = GeminiModel(
+                rawValue: file.project.geminiModel
+            ), let batchJob = file.batchJob,
+                let totalTokenCount = batchJob.totalTokenCount,
+               let promptTokenCount = batchJob.promptTokenCount,
+               let thoughtsTokenCount = batchJob.thoughtsTokenCount,
+               let candidatesTokenCount = batchJob.candidatesTokenCount {
+                
+                TokenResultsView(
+                    geminiModel: geminiModel,
+                    totalTokenCount: totalTokenCount,
+                    promptTokenCount: promptTokenCount,
+                    thoughtsTokenCount: thoughtsTokenCount,
+                    candidatesTokenCount: candidatesTokenCount
+                )
             }
         }
     }
@@ -265,10 +215,6 @@ extension FileDetailView {
         }
     }
 }
-
-
-
-// MARK: File Actions
 
 #Preview {
     let project = Project(name: "Sample Project")
