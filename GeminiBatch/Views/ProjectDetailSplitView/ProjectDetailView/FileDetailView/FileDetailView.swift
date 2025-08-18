@@ -43,7 +43,7 @@ extension FileDetailView {
         if let batchJob = observedFile?.batchJob {
             switch batchJob.jobStatus {
             case .notStarted:
-                fileStatusMessageView(
+                fileCaptionMessageView(
                     text: "File ready. Click play to upload and start batch processing"
                 )
             case .fileUploaded:
@@ -83,7 +83,7 @@ extension FileDetailView {
     @ViewBuilder
     private var fileUploadedDetailView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            fileStatusMessageView(text: "File successfully uploaded to Gemini")
+            fileCaptionMessageView(text: "File successfully uploaded to Gemini")
             if let geminiFileName = file.geminiFileName {
                 fileNameView(geminiFileName)
             }
@@ -93,7 +93,7 @@ extension FileDetailView {
     @ViewBuilder
     private func jobActiveDetailView(statusMessage: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            fileStatusMessageView(text: statusMessage)
+            fileCaptionMessageView(text: statusMessage)
             
             if let geminiFileName = file.geminiFileName {
                 fileNameView(geminiFileName)
@@ -107,7 +107,7 @@ extension FileDetailView {
     
     private var jobSucceededDetailView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            fileStatusMessageView(text: "Batch job completed successfully! Results ready to download.")
+            fileCaptionMessageView(text: "Batch job completed successfully! Results ready to download.")
             
             if let batchJobName = file.batchJob?.geminiJobName {
                 jobNameView(batchJobName)
@@ -216,18 +216,19 @@ extension FileDetailView {
 
 extension FileDetailView {
     @ViewBuilder
-    private func fileStatusMessageView(text: String) -> some View {
+    private func fileCaptionMessageView(
+        text: String,
+        color: Color? = nil
+    ) -> some View {
         Text(text)
             .font(.caption)
-            .foregroundColor(.secondary)
+            .foregroundColor(color != nil ? color : .secondary)
     }
     
     @ViewBuilder
     private func fileNameView(_ name: String) -> some View {
         HStack(spacing: 8) {
-            Text("Gemini File Name:")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            fileCaptionMessageView(text: "Gemini File Name:")
             CopyLinkView(
                 copyContent: name,
                 helpText: "Copy Gemini file name",
@@ -235,9 +236,7 @@ extension FileDetailView {
             )
             
             if let fileExpirationText = file.geminiFileExpirationTimeRemaining {
-                Text(fileExpirationText)
-                    .font(.caption)
-                    .foregroundColor(.orange)
+                fileCaptionMessageView(text: fileExpirationText, color: .orange)
             }
         }
     }
@@ -245,9 +244,7 @@ extension FileDetailView {
     @ViewBuilder
     private func jobNameView(_ name: String) -> some View {
         HStack(spacing: 8) {
-            Text("Gemini Batch Job Name:")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            fileCaptionMessageView(text: "Gemini Batch Job Name:")
             CopyLinkView(
                 copyContent: name,
                 helpText: "Copy Gemini batch job name",
@@ -259,9 +256,7 @@ extension FileDetailView {
     @ViewBuilder
     private func resultPathView(_ path: String) -> some View {
         HStack(spacing: 8) {
-            Text("Gemini Batch Job Result Path:")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            fileCaptionMessageView(text: "Gemini Batch Job Result Path:")
             CopyLinkView(
                 copyContent: path,
                 helpText: "Copy Gemini results path",
@@ -269,9 +264,7 @@ extension FileDetailView {
             )
             
             if let jobExpirationText = file.batchJob?.expirationTimeRemaining {
-                Text(jobExpirationText)
-                    .font(.caption)
-                    .foregroundColor(.orange)
+                fileCaptionMessageView(text: jobExpirationText, color: .orange)
             }
         }
     }
