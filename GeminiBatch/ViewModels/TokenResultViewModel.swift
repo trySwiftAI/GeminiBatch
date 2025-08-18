@@ -50,7 +50,7 @@ struct TokenResultViewModel {
     
     var inputPriceCalculationText: String {
         if isHighVolumeInput, let highRegularInputPrice = geminiModel.regularInputPriceHighVolume {
-            return "( \(inputTokenCount.formatted()) / 1,000,000 ) * $\(String(format: "%.2f", highRegularInputPrice)) * 0.5 = \(inputTokenPrice) (High Volume Discount Applied!)"
+            return "( \(inputTokenCount.formatted()) / 1,000,000 ) * $\(String(format: "%.2f", highRegularInputPrice)) * 0.5 = \(inputTokenPrice)"
         } else {
             return "( \(inputTokenCount.formatted()) / 1,000,000 ) * $\(String(format: "%.2f", geminiModel.regularInputPrice)) * 0.5 = \(inputTokenPrice)"
         }
@@ -58,7 +58,7 @@ struct TokenResultViewModel {
     
     var thoughtPriceCalculationText: String {
         if isHighVolumeOutput, let highRegularOutputPrice = geminiModel.regularOutputPriceHighVolume {
-            return "( \(thoughtsTokenCount.formatted()) / 1,000,000 ) * $\(String(format: "%.2f", highRegularOutputPrice)) * 0.5 = \(thoughtsTokenPrice) (High Volume Discount Applied!)"
+            return "( \(thoughtsTokenCount.formatted()) / 1,000,000 ) * $\(String(format: "%.2f", highRegularOutputPrice)) * 0.5 = \(thoughtsTokenPrice)"
         } else {
             return "( \(thoughtsTokenCount.formatted()) / 1,000,000 ) * $\(String(format: "%.2f", geminiModel.regularOutputPrice)) * 0.5 = \(thoughtsTokenPrice)"
         }
@@ -66,7 +66,7 @@ struct TokenResultViewModel {
     
     var outputPriceCalculationText: String {
         if isHighVolumeOutput, let highRegularOutputPrice = geminiModel.regularOutputPriceHighVolume {
-            return "( \(outputTokenCount.formatted()) / 1,000,000 ) * $\(String(format: "%.2f", highRegularOutputPrice)) * 0.5 = \(outputTokenPrice) (High Volume Discount Applied!)"
+            return "( \(outputTokenCount.formatted()) / 1,000,000 ) * $\(String(format: "%.2f", highRegularOutputPrice)) * 0.5 = \(outputTokenPrice)"
         } else {
             return "( \(outputTokenCount.formatted()) / 1,000,000 ) * $\(String(format: "%.2f", geminiModel.regularOutputPrice)) * 0.5 = \(outputTokenPrice)"
         }
