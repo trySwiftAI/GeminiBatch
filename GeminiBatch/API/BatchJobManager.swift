@@ -92,7 +92,11 @@ struct BatchJobManager {
             
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID,
-                message: "Batch job cancelled successfully. Job Name: \(response.name). Status: \(response.state?.rawValue ?? "pending")",
+                message: """
+                Batch job cancelled successfully. 
+                Job Name: \(response.name). 
+                Status: \(response.state?.rawValue ?? "pending")
+                """,
                 type: .success
             )
         } catch {
@@ -188,7 +192,10 @@ extension BatchJobManager {
             
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID,
-                message: "File uploaded and processed successfully. Gemini File Name: \(geminiFile.uri.absoluteString)",
+                message: """
+                File uploaded and processed successfully. 
+                Gemini File Name: \(geminiFile.uri.absoluteString)
+                """,
                 type: .success
             )
         } catch {
@@ -256,7 +263,11 @@ extension BatchJobManager {
             
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID,
-                message: "Batch job started successfully. Job Name: \(response.name). Status: \(response.state?.rawValue ?? "pending")",
+                message: """
+                Batch job started successfully. 
+                Job Name: \(response.name). 
+                Status: \(response.state?.rawValue ?? "pending")
+                """,
                 type: .success
             )
         } catch {
@@ -316,7 +327,10 @@ extension BatchJobManager {
                     }
                     try await batchJobActor.addBatchJobMessage(
                         id: batchJobID,
-                        message: "Job status: \(response.state?.rawValue ?? batchJobInfo.jobStatus.rawValue). Checking batch job status again in 5 minutes...",
+                        message: """
+                        Job status: \(response.state?.rawValue ?? batchJobInfo.jobStatus.rawValue). 
+                        Checking batch job status again in 5 minutes...
+                        """,
                         type: .pending
                     )
                     try await Task.sleep(nanoseconds: secondsBetweenPollAttempts * 1_000_000_000)
@@ -372,7 +386,10 @@ extension BatchJobManager {
         guard updatedBatchJobInfo.jobStatus == .succeeded else {
             try await batchJobActor.addBatchJobMessage(
                 id: batchJobID, 
-                message: "Batch job has not succeeded yet (current status: \(updatedBatchJobInfo.jobStatus)). Cannot download results until job completes successfully.",
+                message: """
+                Batch job has not succeeded yet (current status: \(updatedBatchJobInfo.jobStatus)). 
+                Cannot download results until job completes successfully.
+                """,
                 type: .error
             )
             throw BatchJobError.batchJobNotCompleted
@@ -411,8 +428,14 @@ extension BatchJobManager {
             )
             
             let resultSize: String = ByteCountFormatter.string(fromByteCount: Int64(batchResultsData.count), countStyle: .file)
-            try await sendResultsDownloadedMessage(
-                resultFileSize: resultSize,
+            try await batchJobActor
+                .updateBatchJobStatusMessage(
+                    id: batchJobID,
+                    statusMessage: "Results downloaded successfully! File size: \(resultSize).",
+                    type: .success
+                )
+            
+            try await sendTokenResultsMessage(
                 tokenCounts: parsedTokenCounts
             )
             
@@ -530,8 +553,7 @@ extension BatchJobManager {
         }
     }
     
-    nonisolated private func sendResultsDownloadedMessage(
-        resultFileSize: String,
+    nonisolated private func sendTokenResultsMessage(
         tokenCounts: (
             totalTokenCount: Int?,
             thoughtsTokenCount: Int?,
@@ -539,32 +561,26 @@ extension BatchJobManager {
             candidatesTokenCount: Int?
         )
     ) async throws {
+        
         guard let totalTokenCount = tokenCounts.totalTokenCount,
               let thoughtsTokenCount = tokenCounts.thoughtsTokenCount,
               let promptTokenCount = tokenCounts.promptTokenCount,
               let candidatesTokenCount = tokenCounts.candidatesTokenCount else {
-            try await batchJobActor
-                .updateBatchJobStatusMessage(
-                    id: batchJobID,
-                    statusMessage: "Results downloaded successfully! File size: \(resultFileSize). Sorry, couldn't extract the number of tokens from the file",
-                    type: .success
-                )
             return
         }
         
-        let message = """
-            Results downloaded successfully! File size: \(resultFileSize).
-            
+        let tokenResultsMessage = """
             Token usage: 
-            Total - \(totalTokenCount)
-            Input Tokens - \(promptTokenCount)
-            Thought Output Tokens - \(thoughtsTokenCount)
-            Output Tokens - \(candidatesTokenCount)
+            
+            Total: \(totalTokenCount.formatted())
+            - Input: \(promptTokenCount.formatted())
+            - Thought: \(thoughtsTokenCount.formatted())
+            - Output: \(candidatesTokenCount.formatted())
             """
         try await batchJobActor
             .updateBatchJobStatusMessage(
                 id: batchJobID,
-                statusMessage: message,
+                statusMessage: tokenResultsMessage,
                 type: .success
             )
     }

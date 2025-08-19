@@ -21,6 +21,7 @@ struct BatchJobMessageRow: View {
                 Text(message.message)
                     .font(.body)
                     .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
                 
                 Text(message.timestamp, style: .time)
                     .font(.caption2)
