@@ -19,6 +19,7 @@ struct BatchJobManager {
     
     nonisolated struct BatchResultResponse: Decodable, Sendable {
       let response: GeminiGenerateContentResponseBody
+      let key: String
     }
     
     init(
@@ -514,18 +515,44 @@ extension BatchJobManager {
         promptTokenCount: Int?,
         candidatesTokenCount: Int?
     ) {
+        
+        guard let batchResult = parseJSONLContent(from: data) else {
+            return (nil, nil, nil, nil)
+        }
+        
         var totalTokenCount = 0
         var thoughtsTokenCount = 0
         var promptTokenCount = 0
         var candidatesTokenCount = 0
         
-        guard let jsonlString = String(data: data, encoding: .utf8) else {
+        for batchResult in batchResult {
+            if let usageMetadata = batchResult.response.usageMetadata {
+                totalTokenCount += usageMetadata.totalTokenCount ?? 0
+                thoughtsTokenCount += usageMetadata.thoughtsTokenCount ?? 0
+                promptTokenCount += usageMetadata.promptTokenCount ?? 0
+                candidatesTokenCount += usageMetadata.candidatesTokenCount ?? 0
+            }
+        }
+        
+        if totalTokenCount == 0  {
             return (nil, nil, nil, nil)
+        } else {
+            return (totalTokenCount, thoughtsTokenCount, promptTokenCount, candidatesTokenCount)
+        }
+    }
+    
+    nonisolated private func parseJSONLContent(
+        from data: Data
+    ) -> [BatchResultResponse]? {
+        
+        guard let jsonlString = String(data: data, encoding: .utf8) else {
+            return nil
         }
         
         let lines = jsonlString.components(separatedBy: .newlines)
         let decoder = JSONDecoder()
         
+        var batchResults: [BatchResultResponse] = []
         for line in lines {
             let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmedLine.isEmpty else { continue }
@@ -534,23 +561,13 @@ extension BatchJobManager {
             
             do {
                 let response = try decoder.decode(BatchResultResponse.self, from: lineData)
-
-                if let usageMetadata = response.response.usageMetadata {
-                    totalTokenCount += usageMetadata.totalTokenCount ?? 0
-                    thoughtsTokenCount += usageMetadata.thoughtsTokenCount ?? 0
-                    promptTokenCount += usageMetadata.promptTokenCount ?? 0
-                    candidatesTokenCount += usageMetadata.candidatesTokenCount ?? 0
-                }
+                batchResults.append(response)
             } catch {
                 // Continue processing other lines even if one fails to parse
                 continue
             }
         }
-        if totalTokenCount == 0  {
-            return (nil, nil, nil, nil)
-        } else {
-            return (totalTokenCount, thoughtsTokenCount, promptTokenCount, candidatesTokenCount)
-        }
+        return batchResults
     }
     
     nonisolated private func sendTokenResultsMessage(
