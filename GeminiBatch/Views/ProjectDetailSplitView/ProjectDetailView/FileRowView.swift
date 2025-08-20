@@ -16,6 +16,16 @@ struct FileRowView: View {
     @Environment(ToastPresenter.self) private var toastPresenter
     
     let file: BatchFile
+    @Query private var batchFiles: [BatchFile]
+    @Query private var batchJobs: [BatchJob]
+    
+    private var observedFile: BatchFile? {
+        batchFiles.first
+    }
+    
+    private var observedBatchJob: BatchJob? {
+        batchJobs.first
+    }
     
     @State private var viewModel: BatchFileViewModel
     @State private var taskManager = TaskManager.shared
@@ -36,6 +46,9 @@ struct FileRowView: View {
         self.file = file
         self._selectedBatchFile = selectedBatchFile
         self._viewModel = State(initialValue: BatchFileViewModel(batchFile: file))
+        let fileID = file.id
+        self._batchFiles = Query(filter: #Predicate { $0.id == fileID })
+        self._batchJobs = Query(filter: #Predicate { $0.batchFile.id == fileID })
     }
     
     var body: some View {
@@ -45,7 +58,7 @@ struct FileRowView: View {
                     .foregroundColor(.accentColor)
                 FileDetailView(file: file)
                 Spacer()
-                if let batchJob = file.batchJob {
+                if let batchJob = observedBatchJob ?? observedFile?.batchJob {
                     BatchJobStatusView(status: batchJob.jobStatus)
                         .padding(.trailing, 10)
                 }
@@ -68,8 +81,12 @@ struct FileRowView: View {
         .onChange(of: taskManager.runningTasks) {
             viewModel.updateStatus(forBatchFile: file)
         }
-        .onChange(of: file.batchJob?.jobStatus) {
-            viewModel.updateStatus(forBatchFile: file)
+        .onChange(of: observedBatchJob?.jobStatus) {
+            if let observedBatchJob = observedBatchJob {
+                viewModel.updateStatus(forBatchFile: observedBatchJob.batchFile)
+            } else if let observedFile = observedFile {
+                viewModel.updateStatus(forBatchFile: observedFile)
+            }
         }
     }
 }
