@@ -6,8 +6,9 @@ The Gemini Batch API Manager is a Mac app for managing Batch requests for the [G
 
 1. Download the code from this repo: [https://github.com/trySwiftAI/GeminiBatch](https://github.com/trySwiftAI/GeminiBatch)
 2. Open in Xcode 26 (running on macOS 26)
-3. Upload one or several JSONL files that should be run in Batch Mode
+3. Upload one or several JSONL files that should be run in Batch Mode. To test, use the included [sample_batch_requests.jsonl](https://github.com/trySwiftAI/GeminiBatch/blob/main/sample_batch_requests.jsonl) file (~ $0.0001 using the Gemini 2.5 Flash Lite model)
 4. Click Run or Run all
 5. Wait for the batch job to complete (takes approximately 5 - 15 minutes)
 6. Download the results (as a JSONL file)
+7. Use [JSONL Beautifier](https://jsonlbeautifier.com/) to review the results if needed
 
