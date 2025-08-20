@@ -49,8 +49,10 @@ class BatchFileViewModel {
         } else {
             batchJob = BatchJob(batchFile: file)
             file.batchJob = batchJob
-            try modelContext.save()
         }
+        
+        batchJob.jobStatus = .started
+        try modelContext.save()
         
         if !keychainManager.geminiAPIKey.isEmpty {
             let batchJobManager = BatchJobManager(
@@ -121,7 +123,7 @@ extension BatchFileViewModel {
         
         // Determine action based on job status
         switch batchJob.jobStatus {
-        case .notStarted, .fileUploaded, .pending, .running, .succeeded:
+        case .notStarted, .started, .fileUploaded, .pending, .running, .succeeded:
             return .run
         case .unspecified, .failed, .cancelled, .expired:
             return .retry

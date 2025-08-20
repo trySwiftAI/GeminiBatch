@@ -47,7 +47,7 @@ struct BatchJobManager {
             switch batchJobInfo.jobStatus {
             case .notStarted, .failed, .cancelled, .expired:
                 try await uploadFile()
-            case .fileUploaded:
+            case .started, .fileUploaded:
                 try await startBatchJob()
             case .pending, .running, .unspecified:
                 try await pollBatchJobStatus()

@@ -15,6 +15,8 @@ struct BatchFileJobStatusView: View {
         switch batchJob.jobStatus {
         case .notStarted:
             fileCaptionMessageView(text: "File ready. Click play to upload and start batch processing")
+        case .started:
+            jobActiveDetailView(statusMessage: "Job has started. Attempting to upload the file to Gemini...")
         case .fileUploaded:
             fileUploadedDetailView
         case .pending:
@@ -82,8 +84,8 @@ extension BatchFileJobStatusView {
             if let batchJobName = batchJob.geminiJobName {
                 jobNameView(batchJobName)
             }
-            if let resultPath = batchJob.batchFile.resultPath {
-                resultPathView(resultPath)
+            if let resultsFileName = batchJob.resultsFileName {
+                resultPathView(resultsFileName)
             }
         }
     }
@@ -175,7 +177,7 @@ extension BatchFileJobStatusView {
     @ViewBuilder
     private func resultPathView(_ path: String) -> some View {
         HStack(spacing: 8) {
-            fileCaptionMessageView(text: "Gemini Batch Job Result Path:")
+            fileCaptionMessageView(text: "Gemini Batch Job Result File:")
             CopyLinkView(
                 copyContent: path,
                 helpText: "Copy Gemini results path",

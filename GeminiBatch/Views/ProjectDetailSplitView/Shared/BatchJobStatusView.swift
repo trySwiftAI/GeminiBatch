@@ -34,6 +34,8 @@ extension BatchJobStatusView {
         switch status {
         case .notStarted:
             return "circle.dotted"
+        case .started:
+            return "play.circle.fill"
         case .fileUploaded:
             return "arrow.up.circle.fill"
         case .pending:
@@ -59,7 +61,7 @@ extension BatchJobStatusView {
         switch status {
         case .notStarted:
             return .brown
-        case .fileUploaded, .pending, .running:
+        case .started, .fileUploaded, .pending, .running:
             return .orange
         case .succeeded:
             return .green

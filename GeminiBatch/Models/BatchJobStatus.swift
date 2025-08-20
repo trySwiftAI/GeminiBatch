@@ -9,6 +9,7 @@ import AIProxy
 
 enum BatchJobStatus: String, CaseIterable, Codable, Sendable {
     case notStarted
+    case started
     case fileUploaded
     case unspecified
     case pending
@@ -42,6 +43,8 @@ enum BatchJobStatus: String, CaseIterable, Codable, Sendable {
         switch self {
         case .notStarted:
             return "NOT_STARTED"
+        case .started:
+            return "STARTED"
         case .fileUploaded:
             return "FILE_UPLOADED"
         case .unspecified:
@@ -67,6 +70,8 @@ enum BatchJobStatus: String, CaseIterable, Codable, Sendable {
         switch self {
         case .notStarted:
             return "The job has not been started yet"
+        case .started:
+            return "The job has started. Attempting to upload file to Gemini..."
         case .fileUploaded:
             return "The batch job file has been uploaded and is ready for processing"
         case .unspecified:
