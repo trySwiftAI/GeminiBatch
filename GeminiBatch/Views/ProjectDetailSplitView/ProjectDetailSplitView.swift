@@ -12,10 +12,11 @@ import SwiftData
 struct ProjectDetailSplitView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var projects: [Project]
+    @Query private var batchFiles: [BatchFile]
+    @Query private var batchJobs: [BatchJob]
     
     @StateObject private var hide = SideHolder(.secondary)
     
-    @State var viewModel: ProjectViewModel
     @State var selectedBatchFile: BatchFile? = nil
     
     private var project: Project? {
@@ -23,9 +24,15 @@ struct ProjectDetailSplitView: View {
     }
     
     init(project: Project) {
-        viewModel = .init(project: project)
         let projectId = project.id
         self._projects = Query(filter: #Predicate { $0.id == projectId })
+        self._batchFiles = Query(
+            filter: #Predicate<BatchFile> { $0.project.id == projectId },
+            sort: \BatchFile.uploadedAt
+        )
+        self._batchJobs = Query(
+            filter: #Predicate<BatchJob> { $0.batchFile.project.id == projectId }
+        )
     }
     
     var body: some View {
@@ -34,6 +41,8 @@ struct ProjectDetailSplitView: View {
                 if let project = project {
                     ProjectDetailView(
                         project: project,
+                        batchFiles: batchFiles,
+                        batchJobs: batchJobs,
                         selectedBatchFile: $selectedBatchFile
                     )
                 } else {
@@ -66,11 +75,6 @@ struct ProjectDetailSplitView: View {
                 withAnimation {
                     hide.side = nil
                 }
-            }
-        }
-        .onChange(of: project) {
-            if let project = project {
-                viewModel = ProjectViewModel(project: project)
             }
         }
     }

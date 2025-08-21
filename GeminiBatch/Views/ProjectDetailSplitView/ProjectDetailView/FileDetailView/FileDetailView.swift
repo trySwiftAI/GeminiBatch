@@ -9,24 +9,14 @@ import SwiftUI
 import SwiftData
 
 struct FileDetailView: View {
-    @Query private var batchFiles: [BatchFile]
-    
-    private var observedFile: BatchFile? {
-        batchFiles.first
-    }
     
     let file: BatchFile
-    
-    init(file: BatchFile) {
-        self.file = file
-        let fileID = file.id
-        self._batchFiles = Query(filter: #Predicate { $0.id == fileID })
-    }
+    let fileBatchJob: BatchJob?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             FileOverviewView(file: file)
-            if let batchJob = observedFile?.batchJob {
+            if let batchJob = fileBatchJob {
                 BatchFileJobStatusView(batchJob: batchJob)
             }
         }
@@ -47,7 +37,7 @@ struct FileDetailView: View {
     file.batchJob = batchJob
     
     
-    return FileDetailView(file: file)
+    return FileDetailView(file: file, fileBatchJob: batchJob)
         .environment(ToastPresenter())
         .modelContainer(
             for: [Project.self, BatchFile.self],
@@ -70,7 +60,7 @@ struct FileDetailView: View {
     batchJob.jobStatus = .notStarted
     file.batchJob = batchJob
     
-    return FileDetailView(file: file)
+    return FileDetailView(file: file, fileBatchJob: batchJob)
         .environment(ToastPresenter())
         .modelContainer(for: [Project.self, BatchFile.self], inMemory: true)
         .frame(width: 400)
@@ -94,7 +84,7 @@ struct FileDetailView: View {
 
 
     
-    return FileDetailView(file: file)
+    return FileDetailView(file: file, fileBatchJob: batchJob)
         .environment(ToastPresenter())
         .modelContainer(for: [Project.self, BatchFile.self], inMemory: true)
         .frame(width: 400)
@@ -114,7 +104,7 @@ struct FileDetailView: View {
     batchJob.jobStatus = .pending
     file.batchJob = batchJob
     
-    return FileDetailView(file: file)
+    return FileDetailView(file: file, fileBatchJob: batchJob)
         .environment(ToastPresenter())
         .modelContainer(for: [Project.self, BatchFile.self], inMemory: true)
         .frame(width: 400)
@@ -134,7 +124,7 @@ struct FileDetailView: View {
     batchJob.jobStatus = .running
     file.batchJob = batchJob
     
-    return FileDetailView(file: file)
+    return FileDetailView(file: file, fileBatchJob: batchJob)
         .environment(ToastPresenter())
         .modelContainer(for: [Project.self, BatchFile.self], inMemory: true)
         .frame(width: 400)
@@ -154,7 +144,7 @@ struct FileDetailView: View {
     batchJob.jobStatus = .succeeded
     file.batchJob = batchJob
     
-    return FileDetailView(file: file)
+    return FileDetailView(file: file, fileBatchJob: batchJob)
         .environment(ToastPresenter())
         .modelContainer(for: [Project.self, BatchFile.self], inMemory: true)
         .frame(width: 400)
@@ -174,7 +164,7 @@ struct FileDetailView: View {
     batchJob.jobStatus = .failed
     file.batchJob = batchJob
     
-    return FileDetailView(file: file)
+    return FileDetailView(file: file, fileBatchJob: batchJob)
         .environment(ToastPresenter())
         .modelContainer(for: [Project.self, BatchFile.self], inMemory: true)
         .frame(width: 400)
@@ -194,7 +184,7 @@ struct FileDetailView: View {
     batchJob.jobStatus = .cancelled
     file.batchJob = batchJob
     
-    return FileDetailView(file: file)
+    return FileDetailView(file: file, fileBatchJob: batchJob)
         .environment(ToastPresenter())
         .modelContainer(for: [Project.self, BatchFile.self], inMemory: true)
         .frame(width: 400)
@@ -214,7 +204,7 @@ struct FileDetailView: View {
     batchJob.jobStatus = .expired
     file.batchJob = batchJob
     
-    return FileDetailView(file: file)
+    return FileDetailView(file: file, fileBatchJob: batchJob)
         .environment(ToastPresenter())
         .modelContainer(for: [Project.self, BatchFile.self], inMemory: true)
         .frame(width: 400)
@@ -234,7 +224,7 @@ struct FileDetailView: View {
     batchJob.jobStatus = .jobFileDownloaded
     file.batchJob = batchJob
     
-    return FileDetailView(file: file)
+    return FileDetailView(file: file, fileBatchJob: batchJob)
         .environment(ToastPresenter())
         .modelContainer(for: [Project.self, BatchFile.self], inMemory: true)
         .frame(width: 400)
@@ -254,7 +244,7 @@ struct FileDetailView: View {
     batchJob.jobStatus = .unspecified
     file.batchJob = batchJob
     
-    return FileDetailView(file: file)
+    return FileDetailView(file: file, fileBatchJob: batchJob)
         .environment(ToastPresenter())
         .modelContainer(for: [Project.self, BatchFile.self], inMemory: true)
         .frame(width: 400)

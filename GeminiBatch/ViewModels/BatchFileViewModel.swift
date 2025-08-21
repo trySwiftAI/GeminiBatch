@@ -21,16 +21,22 @@ class BatchFileViewModel {
     }
     
     private let file: BatchFile
-    let keychainManager: ProjectKeychainManager
+    private let fileBatchJob: BatchJob?
+    private let keychainManager: ProjectKeychainManager
     
-    init(batchFile: BatchFile) {
-        self.file = batchFile
-        self.keychainManager = ProjectKeychainManager(project: batchFile.project)
-        self.batchJobAction = determineAction(for: batchFile)
+    var apiKeyIsEmpty: Bool {
+        keychainManager.geminiAPIKey.isEmpty
     }
     
-    func updateStatus(forBatchFile batchFile: BatchFile) {
-        let newAction = determineAction(for: batchFile)
+    init(batchFile: BatchFile, fileBatchJob: BatchJob?) {
+        self.file = batchFile
+        self.fileBatchJob = fileBatchJob
+        self.keychainManager = ProjectKeychainManager(project: batchFile.project)
+        self.batchJobAction = determineAction(for: fileBatchJob)
+    }
+    
+    func updateStatus(forBatchJob batchJob: BatchJob?) {
+        let newAction = determineAction(for: batchJob)
         
         withAnimation {
             batchJobAction = newAction
@@ -41,7 +47,7 @@ class BatchFileViewModel {
         inModelContext modelContext: ModelContext
     ) async throws {
         let batchJob: BatchJob
-        if let fileBatchJob = file.batchJob {
+        if let fileBatchJob = fileBatchJob {
             batchJob = fileBatchJob
             if TaskManager.shared.isTaskRunning(forBatchJobID: batchJob.persistentModelID) {
                 return
@@ -77,7 +83,7 @@ class BatchFileViewModel {
     func retryJob(
         inModelContext modelContext: ModelContext
     ) async throws {
-        if let existingBatchJob = file.batchJob {
+        if let existingBatchJob = fileBatchJob {
             TaskManager.shared.cancelTask(forBatchJobID: existingBatchJob.persistentModelID)
             modelContext.delete(existingBatchJob)
         }
@@ -86,7 +92,7 @@ class BatchFileViewModel {
     }
     
     func cancelJob(inModelContext modelContext: ModelContext) {
-        if let batchJob = file.batchJob {
+        if let batchJob = fileBatchJob {
             switch batchJob.jobStatus {
             case .pending, .running:
                 let batchJobManager = BatchJobManager(
@@ -111,8 +117,8 @@ class BatchFileViewModel {
 
 extension BatchFileViewModel {
     
-    private func determineAction(for batchFile: BatchFile) -> BatchJobAction {
-        guard let batchJob = batchFile.batchJob else {
+    private func determineAction(for batchJob: BatchJob?) -> BatchJobAction {
+        guard let batchJob = fileBatchJob else {
             return .run
         }
         

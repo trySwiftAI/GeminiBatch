@@ -11,10 +11,18 @@ import SwiftUI
 struct ProjectViewModel {
     
     let project: Project
+    let batchFiles: [BatchFile]
+    let batchJobs: [BatchJob]
     var keychainManager: ProjectKeychainManager
     
-    init(project: Project) {
+    init(
+        project: Project,
+        batchFiles: [BatchFile],
+        batchJobs: [BatchJob]
+    ) {
         self.project = project
+        self.batchFiles = batchFiles
+        self.batchJobs = batchJobs
         self.keychainManager = ProjectKeychainManager(project: project)
     }
     
@@ -22,9 +30,7 @@ struct ProjectViewModel {
         if keychainManager.geminiAPIKey.isEmpty {
             return false
         }
-        
-        let batchJobs = project.batchFiles.compactMap(\.batchJob)
-        
+                
         return batchJobs.contains { batchJob in
             switch batchJob.jobStatus {
             case .notStarted, .fileUploaded, .running, .pending, .succeeded:
@@ -39,7 +45,7 @@ struct ProjectViewModel {
     }
     
     var canDownloadAll: Bool {
-        let filesToDownload = project.batchFiles.filter { $0.resultPath != nil }
+        let filesToDownload = batchFiles.filter { $0.resultPath != nil }
         if !filesToDownload.isEmpty {
             return true
         }
@@ -47,8 +53,6 @@ struct ProjectViewModel {
     }
     
     func continueRunningJobs(inModelContext modelContext: ModelContext) async throws {
-        let batchFiles = project.batchFiles
-        
         let eligibleFiles = batchFiles.filter { batchFile in
             guard let batchJob = batchFile.batchJob else { return false }
             
@@ -91,9 +95,9 @@ struct ProjectViewModel {
     }
     
     func runAllJobs(inModelContext modelContext: ModelContext) async throws {
-        let batchFiles = project.batchFiles
         for file in batchFiles {
-            let batchFileViewModel = BatchFileViewModel(batchFile: file)
+            let fileBatchJob = batchJobs.first { $0.batchFile.id == file.id }
+            let batchFileViewModel = BatchFileViewModel(batchFile: file, fileBatchJob: fileBatchJob)
             if batchFileViewModel.batchJobAction == .run {
                 try await batchFileViewModel.runJob(inModelContext: modelContext)
             }

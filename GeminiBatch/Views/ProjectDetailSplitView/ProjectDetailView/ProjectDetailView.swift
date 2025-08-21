@@ -19,12 +19,28 @@ struct ProjectDetailView: View {
     @Binding var selectedBatchFile: BatchFile?
 
     @State private var viewModel: ProjectViewModel
-    @State private var selectedGeminiModel: GeminiModel = .pro
-    private let project: Project
+    @State private var selectedGeminiModel: GeminiModel = .flash
     
-    init(project: Project, selectedBatchFile: Binding<BatchFile?>) {
+    private let project: Project
+    private let batchFiles: [BatchFile]
+    private let batchJobs: [BatchJob]
+    
+    init(
+        project: Project,
+        batchFiles: [BatchFile],
+        batchJobs: [BatchJob],
+        selectedBatchFile: Binding<BatchFile?>
+    ) {
         self.project = project
-        self._viewModel = State(initialValue: ProjectViewModel(project: project))
+        self._viewModel = State(
+            initialValue: ProjectViewModel(
+                project: project,
+                batchFiles: batchFiles,
+                batchJobs: batchJobs
+            )
+        )
+        self.batchFiles = batchFiles
+        self.batchJobs = batchJobs
         self._selectedBatchFile = selectedBatchFile
         if let geminiModel = GeminiModel(rawValue: project.geminiModel) {
             self._selectedGeminiModel = State(initialValue: geminiModel)
@@ -39,8 +55,8 @@ struct ProjectDetailView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     apiKeySection
                     modelSelectionPicker
-                    if !project.batchFiles.isEmpty {
-                        fileListView(project.batchFiles)
+                    if !batchFiles.isEmpty {
+                        fileListView(batchFiles)
                     }
                     FileUploadView(project: project)
                         .padding()
@@ -207,6 +223,7 @@ extension ProjectDetailView {
                     ForEach(files) { file in
                         FileRowView(
                             file: file,
+                            fileBatchJob: batchJobs.first { $0.batchFile.id == file.id },
                             selectedBatchFile: $selectedBatchFile
                         )
                         .id(file.id)
