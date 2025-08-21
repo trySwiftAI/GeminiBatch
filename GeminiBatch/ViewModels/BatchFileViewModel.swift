@@ -129,8 +129,10 @@ extension BatchFileViewModel {
         
         // Determine action based on job status
         switch batchJob.jobStatus {
-        case .notStarted, .started, .fileUploaded, .pending, .running, .succeeded:
+        case .notStarted, .started, .fileUploaded, .pending, .succeeded:
             return .run
+        case .running:
+            return .running
         case .unspecified, .failed, .cancelled, .expired:
             return .retry
         case .jobFileDownloaded:
