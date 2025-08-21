@@ -21,6 +21,10 @@ struct ProjectDetailView: View {
     @State private var viewModel: ProjectViewModel
     @State private var selectedGeminiModel: GeminiModel = .flash
     
+    private var batchJobsMap: [UUID: BatchJob] {
+        Dictionary(uniqueKeysWithValues: batchJobs.map { ($0.batchFile.id, $0) })
+    }
+    
     private let project: Project
     private let batchFiles: [BatchFile]
     private let batchJobs: [BatchJob]
@@ -211,26 +215,30 @@ extension ProjectDetailView {
     
     @ViewBuilder
     private func fileListView(_ files: [BatchFile]) -> some View {
-        VStack(alignment: .leading) {
+        VStack(alignment: .leading, spacing: 0) {
             
             Text("Project Batch Files (\(files.count))")
                 .font(.title2)
                 .fontWeight(.semibold)
                 .padding(.horizontal)
+                .padding(.bottom, 8)
             
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(files) { file in
+            LazyVStack(spacing: 0) {
+                ForEach(files) { file in
+                    VStack(spacing: 0) {
                         FileRowView(
                             file: file,
-                            fileBatchJob: batchJobs.first { $0.batchFile.id == file.id },
+                            fileBatchJob: batchJobsMap[file.id],
                             selectedBatchFile: $selectedBatchFile
                         )
                         .id(file.id)
-                        Divider()
+                        
+                        if file != files.last {
+                            Divider()
+                                .padding(.horizontal)
+                        }
                     }
                 }
-                .padding(.vertical, 8)
             }
         }
     }

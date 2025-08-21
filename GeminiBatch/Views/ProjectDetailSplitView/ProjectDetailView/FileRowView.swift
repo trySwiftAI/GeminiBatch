@@ -73,10 +73,10 @@ struct FileRowView: View {
             setupBatchJobIfNeeded()
             viewModel.updateStatus(forBatchJob: fileBatchJob)
         }
-        .onChange(of: taskManager.runningTasks) {
+        .onChange(of: taskManager.runningTasks) { _, _ in
             viewModel.updateStatus(forBatchJob: fileBatchJob)
         }
-        .onChange(of: fileBatchJob?.jobStatus) {
+        .onChange(of: fileBatchJob?.jobStatus) { _, _ in
             viewModel.updateStatus(forBatchJob: fileBatchJob)
         }
     }
