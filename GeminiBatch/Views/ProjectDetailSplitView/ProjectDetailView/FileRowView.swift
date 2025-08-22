@@ -206,7 +206,7 @@ extension FileRowView {
         let savePanel = NSSavePanel()
         savePanel.title = "Save Batch Job Result"
         savePanel.allowedContentTypes = [.jsonl]
-        savePanel.nameFieldStringValue = resultsFileName
+        savePanel.nameFieldStringValue = resultURL.lastPathComponent
         savePanel.canCreateDirectories = true
         
         savePanel.begin { response in
