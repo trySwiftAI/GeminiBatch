@@ -76,9 +76,6 @@ struct FileRowView: View {
         .onChange(of: taskManager.runningTasks) { _, _ in
             viewModel.updateStatus(forBatchJob: fileBatchJob)
         }
-        .onChange(of: fileBatchJob?.jobStatus) { _, _ in
-            viewModel.updateStatus(forBatchJob: fileBatchJob)
-        }
     }
 }
 

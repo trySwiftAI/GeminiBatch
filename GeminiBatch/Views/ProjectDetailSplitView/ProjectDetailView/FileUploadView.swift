@@ -159,6 +159,9 @@ struct FileUploadView: View {
                     
                     for processedBatchFile in processedBatchFiles {
                         modelContext.insert(processedBatchFile)
+                        let batchJob = BatchJob(batchFile: processedBatchFile)
+                        processedBatchFile.batchJob = batchJob
+                        modelContext.insert(batchJob)
                     }
                     try modelContext.save()
                     
