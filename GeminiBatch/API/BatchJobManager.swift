@@ -315,7 +315,10 @@ extension BatchJobManager {
         )
         
         do {
+            await TaskManager.shared.addSleepingJob(batchJobID)
             try await Task.sleep(nanoseconds: secondsBetweenPollAttempts * 1_000_000_000)
+            await TaskManager.shared.removeSleepingJob(batchJobID)
+            
             for _ in 0..<pollAttempts {
                 let response = try await geminiService.getBatchJobStatus(
                     batchJobName: batchJobName
@@ -334,7 +337,9 @@ extension BatchJobManager {
                         """,
                         type: .pending
                     )
+                    await TaskManager.shared.addSleepingJob(batchJobID)
                     try await Task.sleep(nanoseconds: secondsBetweenPollAttempts * 1_000_000_000)
+                    await TaskManager.shared.removeSleepingJob(batchJobID)
                 case .succeeded, .failed, .cancelled, .expired, .unspecified, .none:
                     try await processJobStatus(
                         fromResponse: response,
@@ -344,6 +349,7 @@ extension BatchJobManager {
                 }
             }
         } catch {
+            await TaskManager.shared.removeSleepingJob(batchJobID)
             try await handleError(error, fallbackMessage: "Failed to get batch job status")
         }
     }

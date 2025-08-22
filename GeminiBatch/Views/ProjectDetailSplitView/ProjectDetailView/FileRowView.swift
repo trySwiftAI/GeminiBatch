@@ -69,11 +69,10 @@ struct FileRowView: View {
         }
         .focusable()
         .focusEffectDisabled()
-        .task {
-            setupBatchJobIfNeeded()
+        .onChange(of: taskManager.runningTasks) { _, _ in
             viewModel.updateStatus(forBatchJob: fileBatchJob)
         }
-        .onChange(of: taskManager.runningTasks) { _, _ in
+        .onChange(of: taskManager.sleepingJobs) { _, _ in
             viewModel.updateStatus(forBatchJob: fileBatchJob)
         }
     }

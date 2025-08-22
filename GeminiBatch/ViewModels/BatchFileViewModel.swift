@@ -122,8 +122,8 @@ extension BatchFileViewModel {
             return .run
         }
         
-        // Check if task is currently running
-        if TaskManager.shared.isTaskRunning(forBatchJobID: batchJob.persistentModelID) {
+        let taskManager = TaskManager.shared
+        if taskManager.isTaskRunning(forBatchJobID: batchJob.persistentModelID) || taskManager.isTaskSleeping(forBatchJobID: batchJob.persistentModelID)  {
             return .running
         }
         

@@ -15,6 +15,7 @@ final class TaskManager {
     static let shared = TaskManager()
     
     var runningTasks: [BatchJobID: Task<Void, Error>] = [:]
+    var sleepingJobs: [BatchJobID] = []
     
     private init() {}
     
@@ -38,6 +39,7 @@ final class TaskManager {
     func cancelTask(forBatchJobID batchJobID: BatchJobID) {
         runningTasks[batchJobID]?.cancel()
         runningTasks.removeValue(forKey: batchJobID)
+        removeSleepingJob(batchJobID)
     }
     
     func cancelAllTasks() {
@@ -45,6 +47,7 @@ final class TaskManager {
             task.cancel()
         }
         runningTasks.removeAll()
+        sleepingJobs.removeAll()
     }
     
     func isTaskRunning(forBatchJobID batchJobID: BatchJobID) -> Bool {
@@ -56,5 +59,19 @@ final class TaskManager {
             return true
         }
         return false
+    }
+    
+    func addSleepingJob(_ batchJobID: BatchJobID) {
+        if !sleepingJobs.contains(batchJobID) {
+            sleepingJobs.append(batchJobID)
+        }
+    }
+
+    func removeSleepingJob(_ batchJobID: BatchJobID) {
+        sleepingJobs.removeAll { $0 == batchJobID }
+    }
+
+    func isTaskSleeping(forBatchJobID batchJobID: BatchJobID) -> Bool {
+        return sleepingJobs.contains(batchJobID)
     }
 }
