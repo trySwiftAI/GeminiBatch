@@ -189,8 +189,7 @@ extension FileRowView {
     }
     
     private func downloadResultFile() {
-        guard let resultPath = file.resultPath,
-              let resultsFileName = fileBatchJob?.resultsFileName else {
+        guard let resultPath = file.resultPath else {
             toastPresenter.showErrorToast(withMessage: "No result file available for download")
             return
         }
